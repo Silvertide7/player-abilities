@@ -16,6 +16,10 @@ Castable abilities that behave like spells in Iron's Spells and Spellbooks:
 
 Always-on abilities that work like tags on the player: if the player has the passive, the effect is active. Example: a water-walking passive lets the player walk on water. No casting, no selection — possession is the ability. The exact data we need per passive (just an id, or id + config values) is still to be worked out.
 
+### Triggered abilities (planned)
+
+A third kind: fire automatically on a condition (e.g. drop below half health → heal), then go on an internal cooldown before they can fire again. Not yet designed — see the TODO in `claude_reference/backend_data_design.md`.
+
 ### Registration
 
 A registry so abilities can be declared and looked up by id — both built-in abilities and abilities added by other mods through the API. How players are *granted* abilities (commands, data attachments, compat mods below) is part of the design.
@@ -24,6 +28,7 @@ A registry so abilities can be declared and looked up by id — both built-in ab
 
 - **Project MMO**: gate ability *use* behind a skill level (e.g. can't cast until Magic 20).
 - **Pufferfish's Skills**: both gate and *grant* abilities (active or passive) via skill tree nodes — unlocking a node gives the player the ability.
+- **Iron's Spells and Spellbooks** (later): let abilities cost mana from Iron's mana pool.
 
 Compat must be optional: the mod works standalone when neither is installed.
 
@@ -39,6 +44,14 @@ Compat must be optional: the mod works standalone when neither is installed.
 - All mod id, name, version, and dependency ranges live in `gradle.properties` — change them there, not in mods.toml.
 - Register content with `DeferredRegister` on the mod event bus from the `PlayerAbilities` constructor.
 - Assets go under `src/main/resources/assets/player_abilities/`.
+
+## Dev-only test content
+
+Test abilities used to exercise the framework in dev but NOT shipped live under:
+- Package `net.silvertide.player_abilities.dev`
+- Asset namespace `player_abilities_dev` (`src/main/resources/assets/player_abilities_dev/`)
+
+The `jar` task excludes both (see `build.gradle`). They compile with the rest and load in `runClient`/`runServer` (dev runs use `build/classes` + `build/resources`, not the jar), but are absent from the published jar. This is only safe because **no shipped code references the dev package** — `dev.DevAbilities` self-registers via an `@EventBusSubscriber` + `RegisterEvent` listener (found by annotation scan in dev, simply absent in production). Put new throwaway/test abilities here; graduate one to `content/` + the `player_abilities` namespace only when it's meant to ship.
 
 ## Build & run
 
