@@ -53,11 +53,11 @@ public final class PmmoCompat {
     }
 
     private static void onXpEvent(XpEvent event) {
-        if (event.isCanceled() || (!event.isLevelUp() && !event.isLevelDown())) {
+        if (!event.isLevelUp() && !event.isLevelDown()) {
             return;
         }
         if (event.getEntity() instanceof ServerPlayer player) {
-            reconcile(player);
+            scheduleReconcile(player);
         }
     }
 

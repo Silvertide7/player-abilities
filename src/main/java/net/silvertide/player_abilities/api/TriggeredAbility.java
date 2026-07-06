@@ -2,10 +2,13 @@ package net.silvertide.player_abilities.api;
 
 import net.minecraft.server.level.ServerPlayer;
 
-public abstract class TriggeredAbility extends GatedAbility {
-    public abstract void onTrigger(ServerPlayer player, int level);
+public abstract class TriggeredAbility<T> extends GatedAbility {
+    public abstract AbilityTrigger<T> getTrigger();
 
-    public boolean triggersOnLethalDamage(ServerPlayer player, int level, float incomingDamage) {
-        return false;
+    public boolean shouldTrigger(ServerPlayer player, int level, T context) {
+        return true;
+    }
+
+    public void onTrigger(ServerPlayer player, int level) {
     }
 }

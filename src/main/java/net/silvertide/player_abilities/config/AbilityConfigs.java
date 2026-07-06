@@ -15,6 +15,10 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.Ability;
 import net.silvertide.player_abilities.api.AbilityRegistry;
+import net.silvertide.player_abilities.api.AttributeGrant;
+import net.silvertide.player_abilities.api.EffectGrant;
+import net.silvertide.player_abilities.api.PassiveAbility;
+import net.silvertide.player_abilities.api.ActiveAbility;
 import net.silvertide.player_abilities.api.GatedAbility;
 import net.silvertide.player_abilities.network.SyncAbilityConfigsPayload;
 
@@ -102,6 +106,34 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
         return config != null && config.damageTakenRequirement().isPresent()
                 ? config.damageTakenRequirement().get().resolve(level)
                 : ability.getDamageTakenRequirement(level);
+    }
+
+    public static int castTicks(ActiveAbility ability, int level) {
+        AbilityConfig config = configs.get(ability);
+        return config != null && config.castTicks().isPresent()
+                ? config.castTicks().get().resolve(level)
+                : ability.getCastTicks(level);
+    }
+
+    public static int effectDurationTicks(GatedAbility ability, int level) {
+        AbilityConfig config = configs.get(ability);
+        return config != null && config.effectDurationTicks().isPresent()
+                ? config.effectDurationTicks().get().resolve(level)
+                : ability.getEffectDurationTicks(level);
+    }
+
+    public static List<AttributeGrant> attributeGrants(PassiveAbility ability, int level) {
+        AbilityConfig config = configs.get(ability);
+        return config != null && config.attributeGrants().isPresent()
+                ? config.attributeGrants().get().stream().map(grantConfig -> grantConfig.resolve(level)).toList()
+                : ability.getAttributeGrants(level);
+    }
+
+    public static List<EffectGrant> effectGrants(GatedAbility ability, int level) {
+        AbilityConfig config = configs.get(ability);
+        return config != null && config.effectGrants().isPresent()
+                ? config.effectGrants().get().stream().map(grantConfig -> grantConfig.resolve(level)).toList()
+                : ability.getEffectGrants(level);
     }
 
     public static int maxLevel(Ability ability) {

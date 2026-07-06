@@ -5,14 +5,17 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.silvertide.player_abilities.api.Ability;
 import net.silvertide.player_abilities.api.AbilityRegistry;
 import net.silvertide.player_abilities.api.ActiveAbility;
+import net.silvertide.player_abilities.api.PassiveAbility;
 import net.silvertide.player_abilities.client.AbilityNotifications;
 import net.silvertide.player_abilities.config.AbilityConfigs;
 import net.silvertide.player_abilities.data.AbilityAttachments;
 import net.silvertide.player_abilities.data.ActiveEffect;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public final class ClientPayloadHandlers {
     private ClientPayloadHandlers() {
@@ -29,10 +32,13 @@ public final class ClientPayloadHandlers {
                 grantedLevels.put(ability, level);
             }
         });
+        Set<PassiveAbility> disabledPassives = new HashSet<>();
+        payload.disabledPassiveIds().forEach(abilityId ->
+                AbilityRegistry.getPassive(abilityId).ifPresent(disabledPassives::add));
         ActiveAbility selected = payload.selectedId()
                 .flatMap(AbilityRegistry::getActive)
                 .orElse(null);
-        targetPlayer.getData(AbilityAttachments.ABILITY_DATA).replaceSyncedState(grantedLevels, selected);
+        targetPlayer.getData(AbilityAttachments.ABILITY_DATA).replaceSyncedState(grantedLevels, disabledPassives, selected);
     }
 
     public static void handleSyncCooldown(SyncCooldownPayload payload, IPayloadContext context) {
@@ -79,7 +85,7 @@ public final class ClientPayloadHandlers {
         var abilityData = context.player().getData(AbilityAttachments.ABILITY_DATA);
         Optional<ActiveAbility> castingAbility = payload.castingAbilityId().flatMap(AbilityRegistry::getActive);
         if (castingAbility.isPresent()) {
-            abilityData.startCast(castingAbility.get(), payload.level(), payload.totalTicks(), null);
+            abilityData.startCast(castingAbility.get(), payload.level(), payload.totalTicks(), null, 0);
         } else {
             abilityData.clearCast();
         }

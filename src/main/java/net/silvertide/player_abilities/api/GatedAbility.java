@@ -2,6 +2,7 @@ package net.silvertide.player_abilities.api;
 
 import net.silvertide.player_abilities.config.AbilityConfig;
 
+import java.util.List;
 import java.util.Optional;
 
 public abstract class GatedAbility extends Ability {
@@ -17,5 +18,13 @@ public abstract class GatedAbility extends Ability {
 
     public Optional<AbilityConfig.PmmoUseRequirement> getDefaultPmmoUseRequirement() {
         return Optional.empty();
+    }
+
+    public int getEffectDurationTicks(int level) {
+        return 0;
+    }
+
+    public List<EffectGrant> getEffectGrants(int level) {
+        return List.of();
     }
 }

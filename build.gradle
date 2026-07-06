@@ -44,6 +44,7 @@ base {
 tasks.named('jar', Jar) {
     exclude 'net/silvertide/player_abilities/dev/**'
     exclude 'assets/player_abilities_dev/**'
+    exclude 'data/player_abilities_dev/**'
 }
 
 // Mojang ships Java 21 to end users in 1.21.1, so mods should target Java 21.

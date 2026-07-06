@@ -17,6 +17,7 @@ public final class AbilityNetworking {
         registrar.playToServer(CastAbilityPayload.TYPE, CastAbilityPayload.STREAM_CODEC, ServerPayloadHandlers::handleCast);
         registrar.playToServer(SelectAbilityPayload.TYPE, SelectAbilityPayload.STREAM_CODEC, ServerPayloadHandlers::handleSelect);
         registrar.playToClient(SyncAbilitiesPayload.TYPE, SyncAbilitiesPayload.STREAM_CODEC, ClientPayloadHandlers::handleSyncAbilities);
+        registrar.playToServer(TogglePassivePayload.TYPE, TogglePassivePayload.STREAM_CODEC, ServerPayloadHandlers::handleTogglePassive);
         registrar.playToClient(SyncCooldownPayload.TYPE, SyncCooldownPayload.STREAM_CODEC, ClientPayloadHandlers::handleSyncCooldown);
         registrar.playToClient(SyncCastStatePayload.TYPE, SyncCastStatePayload.STREAM_CODEC, ClientPayloadHandlers::handleSyncCastState);
         registrar.playToClient(SyncEffectsPayload.TYPE, SyncEffectsPayload.STREAM_CODEC, ClientPayloadHandlers::handleSyncEffects);

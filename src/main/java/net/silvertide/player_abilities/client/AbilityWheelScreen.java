@@ -249,6 +249,8 @@ public final class AbilityWheelScreen extends Screen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button == 0) {
+            hoveredIndex = computeHoveredIndex(currentPage().size(),
+                    (float) (mouseX - width / 2.0), (float) (mouseY - height / 2.0));
             selectHoveredAndClose();
         } else if (button == 1) {
             onClose();

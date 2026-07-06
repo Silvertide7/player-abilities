@@ -30,7 +30,7 @@ public abstract class Ability {
     }
 
     public int getMaxLevel() {
-        return Integer.MAX_VALUE;
+        return 1;
     }
 
     public ResourceLocation getCategory() {

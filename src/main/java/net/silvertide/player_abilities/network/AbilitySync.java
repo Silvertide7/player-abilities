@@ -14,6 +14,7 @@ import net.silvertide.player_abilities.data.RequirementProgress;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -65,7 +66,9 @@ public final class AbilitySync {
         AbilityData abilityData = player.getData(AbilityAttachments.ABILITY_DATA);
         Map<ResourceLocation, Integer> grantedLevels = abilityData.getGrantedLevels().entrySet().stream()
                 .collect(Collectors.toMap(entry -> entry.getKey().getId(), Map.Entry::getValue));
-        return new SyncAbilitiesPayload(player.getId(), grantedLevels,
+        Set<ResourceLocation> disabledPassiveIds = abilityData.getDisabledPassives().stream()
+                .map(Ability::getId).collect(Collectors.toSet());
+        return new SyncAbilitiesPayload(player.getId(), grantedLevels, disabledPassiveIds,
                 abilityData.getSelected().map(Ability::getId));
     }
 }

@@ -1,0 +1,8 @@
+{
+  "attribute_grants": [
+    { "attribute": "minecraft:generic.movement_speed", "amount": [0.2, 0.4, 0.6], "operation": "add_multiplied_base" }
+  ],
+  "effect_grants": [
+    { "effect": "minecraft:jump_boost", "duration_ticks": 100 }
+  ]
+}

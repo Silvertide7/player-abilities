@@ -3,8 +3,6 @@ package net.silvertide.player_abilities.data;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.Vec3;
 import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.Ability;
@@ -19,6 +17,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,28 +40,27 @@ public class AbilityData {
             Codec.unboundedMap(ResourceLocation.CODEC, RequirementProgress.CODEC)
                     .optionalFieldOf("requirements", Map.of())
                     .forGetter(AbilityData::requirementsAsIds),
+            ResourceLocation.CODEC.listOf().optionalFieldOf("disabled_passives", List.of())
+                    .forGetter(AbilityData::disabledPassivesAsIds),
             ResourceLocation.CODEC.optionalFieldOf("selected")
                     .forGetter(abilityData -> abilityData.getSelected().map(Ability::getId))
     ).apply(instance, AbilityData::fromSerialized));
-
-    private record PassiveGrant(PassiveAbility passive, int level) {
-    }
 
     private final Map<ResourceLocation, Map<Ability, Integer>> grants = new HashMap<>();
     private final Map<GatedAbility, Cooldown> cooldowns = new HashMap<>();
     private final Map<Ability, ActiveEffect> activeEffects = new HashMap<>();
     private final Map<GatedAbility, RequirementProgress> requirementProgress = new HashMap<>();
+    private final Set<PassiveAbility> disabledPassives = new HashSet<>();
     @Nullable
     private ActiveAbility selected;
     @Nullable
     private ActiveCast activeCast;
-    @Nullable
-    private List<PassiveGrant> cachedPassives;
 
     private static AbilityData fromSerialized(Map<ResourceLocation, Map<ResourceLocation, Integer>> grantLevelsBySource,
                                               Map<ResourceLocation, Cooldown> cooldownsByAbilityId,
                                               Map<ResourceLocation, ActiveEffect> effectsByAbilityId,
                                               Map<ResourceLocation, RequirementProgress> requirementsByAbilityId,
+                                              List<ResourceLocation> disabledPassiveIds,
                                               Optional<ResourceLocation> selectedId) {
         AbilityData abilityData = new AbilityData();
         grantLevelsBySource.forEach((source, abilityLevels) -> abilityLevels.forEach((abilityId, level) -> {
@@ -83,6 +81,8 @@ public class AbilityData {
         });
         requirementsByAbilityId.forEach((abilityId, progress) ->
                 AbilityRegistry.getGated(abilityId).ifPresent(gated -> abilityData.requirementProgress.put(gated, progress)));
+        disabledPassiveIds.forEach(abilityId ->
+                AbilityRegistry.getPassive(abilityId).ifPresent(abilityData.disabledPassives::add));
         selectedId.flatMap(AbilityRegistry::getActive).ifPresent(active -> abilityData.selected = active);
         return abilityData;
     }
@@ -113,8 +113,23 @@ public class AbilityData {
                 Map.Entry::getValue));
     }
 
+    private List<ResourceLocation> disabledPassivesAsIds() {
+        return disabledPassives.stream().map(Ability::getId).toList();
+    }
+
+    public boolean isPassiveDisabled(PassiveAbility passive) {
+        return disabledPassives.contains(passive);
+    }
+
+    public boolean setPassiveDisabled(PassiveAbility passive, boolean disabled) {
+        return disabled ? disabledPassives.add(passive) : disabledPassives.remove(passive);
+    }
+
+    public Set<PassiveAbility> getDisabledPassives() {
+        return Collections.unmodifiableSet(disabledPassives);
+    }
+
     public int setGrant(ResourceLocation source, Ability ability, int level) {
-        cachedPassives = null;
         Integer previousLevel = grants.computeIfAbsent(source, key -> new HashMap<>()).put(ability, level);
         return previousLevel == null ? 0 : previousLevel;
     }
@@ -124,7 +139,6 @@ public class AbilityData {
         if (abilityLevels == null || abilityLevels.remove(ability) == null) {
             return false;
         }
-        cachedPassives = null;
         if (abilityLevels.isEmpty()) {
             grants.remove(source);
         }
@@ -244,9 +258,48 @@ public class AbilityData {
         return Optional.ofNullable(activeCast);
     }
 
-    public ActiveCast startCast(ActiveAbility ability, int level, int totalTicks, @Nullable Vec3 startPosition) {
+    public void startCast(ActiveAbility ability, int level, int totalTicks, @Nullable Vec3 startPosition, int hurtTimeBaseline) {
         activeCast = new ActiveCast(ability, level, totalTicks, startPosition);
-        return activeCast;
+        activeCast.setLastHurtTime(hurtTimeBaseline);
+    }
+
+    public void markCastCompleting() {
+        if (activeCast != null) {
+            activeCast.markCompleting();
+        }
+    }
+
+    public void incrementCastElapsed() {
+        if (activeCast != null) {
+            activeCast.incrementElapsed();
+        }
+    }
+
+    public void recordCastHurtBaseline(int hurtTime) {
+        if (activeCast != null) {
+            activeCast.setLastHurtTime(hurtTime);
+        }
+    }
+
+    public void setCastData(@Nullable Object castData) {
+        if (activeCast != null) {
+            activeCast.setCastData(castData);
+        }
+    }
+
+    public void setEffectData(Ability ability, @Nullable Object effectData) {
+        ActiveEffect effect = activeEffects.get(ability);
+        if (effect != null) {
+            effect.setEffectData(effectData);
+        }
+    }
+
+    public void carryEffectData(ActiveEffect from, ActiveEffect to) {
+        to.setEffectData(from.getEffectData());
+    }
+
+    public void decrementEffect(ActiveEffect effect) {
+        effect.decrementRemaining();
     }
 
     public void clearCast() {
@@ -281,35 +334,14 @@ public class AbilityData {
         cooldowns.values().removeIf(Cooldown::isExpired);
     }
 
-    public boolean anyPassiveAllowsStandingOn(Player player, FluidState fluidState) {
-        List<PassiveGrant> passives = grantedPassives();
-        for (int i = 0; i < passives.size(); i++) {
-            PassiveGrant passiveGrant = passives.get(i);
-            if (passiveGrant.passive().canStandOnFluid(player, fluidState, passiveGrant.level())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private List<PassiveGrant> grantedPassives() {
-        List<PassiveGrant> passives = cachedPassives;
-        if (passives == null) {
-            passives = getGrantedLevels().entrySet().stream()
-                    .filter(entry -> entry.getKey() instanceof PassiveAbility)
-                    .map(entry -> new PassiveGrant((PassiveAbility) entry.getKey(), entry.getValue()))
-                    .toList();
-            cachedPassives = passives;
-        }
-        return passives;
-    }
-
-    public void replaceSyncedState(Map<Ability, Integer> grantedLevels, @Nullable ActiveAbility newSelected) {
-        cachedPassives = null;
+    public void replaceSyncedState(Map<Ability, Integer> grantedLevels, Set<PassiveAbility> newDisabledPassives,
+                                   @Nullable ActiveAbility newSelected) {
         grants.clear();
         if (!grantedLevels.isEmpty()) {
             grants.put(CLIENT_SYNCED_SOURCE, new HashMap<>(grantedLevels));
         }
+        disabledPassives.clear();
+        disabledPassives.addAll(newDisabledPassives);
         selected = newSelected;
     }
 }

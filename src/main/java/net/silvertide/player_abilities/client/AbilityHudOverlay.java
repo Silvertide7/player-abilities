@@ -44,6 +44,8 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
     private static final int TEXT_PRIMARY = 0xFFFFFF;
     private static final int TEXT_MUTED = 0xA0A0B0;
     private static final float TEXT_SCALE = 0.8f;
+    private static final float EFFECT_TEXT_SCALE = 0.7f;
+    private static final int EFFECT_ICON_SIZE = 10;
     private static final int STATUS_LINE_OFFSET = 10;
     private static final int READY_NOTICE_COLOR = 0xFF66DD66;
     private static final Component READY = Component.translatable("hud.player_abilities.ready");
@@ -51,6 +53,8 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
     private final Map<Ability, EffectLine> effectLineCache = new HashMap<>();
     private int lastCooldownHalfSeconds = -1;
     private String lastCooldownText = "";
+    private int lastCastHalfSeconds = -1;
+    private String lastCastText = "";
     private Ability lastRequirementAbility;
     private long lastRequirementKey = -1;
     private String lastRequirementText = "";
@@ -88,28 +92,40 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
         }
         boolean windowed = displayMode == AbilityClientConfig.HudDisplay.CONTEXTUAL
                 || displayMode == AbilityClientConfig.HudDisplay.MINIMIZE;
-        int cellX = MARGIN;
-        int cellY = guiGraphics.guiHeight() - MARGIN - CELL_SIZE;
+        AbilityClientConfig.HudPosition position = AbilityClientConfig.HUD_POSITION.get();
+        boolean rightSide = position.isRight();
+        boolean topSide = position.isTop();
+        int cellX = rightSide ? guiGraphics.guiWidth() - MARGIN - CELL_SIZE : MARGIN;
+        int cellY = topSide ? MARGIN : guiGraphics.guiHeight() - MARGIN - CELL_SIZE;
         if (windowed && !isContextuallyVisible(player, abilityData, ability)) {
             if (displayMode == AbilityClientConfig.HudDisplay.MINIMIZE && ability != null) {
                 renderIconCell(guiGraphics, minecraft, ability, cellX, cellY);
+                renderCooldownShade(guiGraphics, abilityData.getCooldown(ability), cellX, cellY);
             }
             return;
         }
-        int effectsBottom = ability != null ? cellY - 4 : guiGraphics.guiHeight() - MARGIN;
-        renderEffects(guiGraphics, minecraft, abilityData, effectsBottom);
+        int stackCursor;
         if (ability != null) {
-            renderSelectedCell(guiGraphics, minecraft, abilityData, ability, cellX, cellY);
+            stackCursor = topSide ? cellY + CELL_SIZE + 4 : cellY - 4;
+        } else {
+            stackCursor = topSide ? MARGIN : guiGraphics.guiHeight() - MARGIN;
+        }
+        stackCursor = renderReadyNotices(guiGraphics, minecraft, stackCursor, rightSide, topSide);
+        renderEffects(guiGraphics, minecraft, abilityData, stackCursor, rightSide, topSide);
+        if (ability != null) {
+            renderSelectedCell(guiGraphics, minecraft, abilityData, ability, cellX, cellY, rightSide);
         }
     }
 
     private boolean isContextuallyVisible(LocalPlayer player, AbilityData abilityData, ActiveAbility selected) {
+        if (player.tickCount < lastContextualTick) {
+            lastContextualTick = -1;
+            lastContextualSelected = null;
+            contextualTicksRemaining = 0;
+        }
         if (player.tickCount != lastContextualTick) {
             lastContextualTick = player.tickCount;
-            boolean activity = selected != lastContextualSelected
-                    || abilityData.getActiveCast().isPresent()
-                    || (selected != null && (abilityData.isOnCooldown(selected)
-                    || abilityData.getRequirementProgress(selected).isPresent()));
+            boolean activity = selected != lastContextualSelected || abilityData.getActiveCast().isPresent();
             lastContextualSelected = selected;
             if (activity) {
                 contextualTicksRemaining = CONTEXTUAL_TICKS;
@@ -127,8 +143,8 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
                 cellX + (CELL_SIZE - ICON_SIZE) / 2, cellY + (CELL_SIZE - ICON_SIZE) / 2, ICON_SIZE);
     }
 
-    private void renderCooldownShade(GuiGraphics guiGraphics, AbilityData abilityData, ActiveAbility ability, int cellX, int cellY) {
-        abilityData.getCooldown(ability).ifPresent(activeCooldown -> {
+    private void renderCooldownShade(GuiGraphics guiGraphics, Optional<Cooldown> cooldown, int cellX, int cellY) {
+        cooldown.ifPresent(activeCooldown -> {
             float remainingFraction = activeCooldown.totalTicks() <= 0 ? 0.0f
                     : (float) activeCooldown.remainingTicks() / activeCooldown.totalTicks();
             int overlayHeight = Mth.ceil(CELL_SIZE * remainingFraction);
@@ -137,25 +153,35 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
     }
 
     private void renderSelectedCell(GuiGraphics guiGraphics, Minecraft minecraft, AbilityData abilityData,
-                                    ActiveAbility ability, int cellX, int cellY) {
+                                    ActiveAbility ability, int cellX, int cellY, boolean rightSide) {
         renderIconCell(guiGraphics, minecraft, ability, cellX, cellY);
         Optional<Cooldown> cooldown = abilityData.getCooldown(ability);
-        renderCooldownShade(guiGraphics, abilityData, ability, cellX, cellY);
-        int textX = cellX + CELL_SIZE + 4;
+        renderCooldownShade(guiGraphics, cooldown, cellX, cellY);
+        int textAnchorX = rightSide ? cellX - 4 : cellX + CELL_SIZE + 4;
         String requirementsText = requirementsText(abilityData, ability);
         guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(textX, cellY + 4, 0);
+        guiGraphics.pose().translate(textAnchorX, cellY + 4, 0);
         guiGraphics.pose().scale(TEXT_SCALE, TEXT_SCALE, 1.0f);
-        guiGraphics.drawString(minecraft.font,
-                AbilityIcons.nameWithLevel(ability, abilityData.getEffectiveLevel(ability)), 0, 0, TEXT_PRIMARY);
+        drawAligned(guiGraphics, minecraft,
+                AbilityIcons.nameWithLevel(ability, abilityData.getEffectiveLevel(ability)), 0, TEXT_PRIMARY, rightSide);
         if (cooldown.isPresent()) {
-            guiGraphics.drawString(minecraft.font, cooldownText(cooldown.get()) + requirementsText, 0, STATUS_LINE_OFFSET, TEXT_MUTED);
+            String statusLine = requirementsText.isEmpty() ? cooldownText(cooldown.get())
+                    : cooldownText(cooldown.get()) + " " + requirementsText;
+            drawAligned(guiGraphics, minecraft, statusLine, STATUS_LINE_OFFSET, TEXT_MUTED, rightSide);
         } else if (!requirementsText.isEmpty()) {
-            guiGraphics.drawString(minecraft.font, requirementsText.strip(), 0, STATUS_LINE_OFFSET, TEXT_MUTED);
+            drawAligned(guiGraphics, minecraft, requirementsText, STATUS_LINE_OFFSET, TEXT_MUTED, rightSide);
         } else {
-            guiGraphics.drawString(minecraft.font, READY, 0, STATUS_LINE_OFFSET, TEXT_MUTED);
+            drawAligned(guiGraphics, minecraft, READY, STATUS_LINE_OFFSET, TEXT_MUTED, rightSide);
         }
         guiGraphics.pose().popPose();
+    }
+
+    private void drawAligned(GuiGraphics guiGraphics, Minecraft minecraft, Component text, int y, int color, boolean rightSide) {
+        guiGraphics.drawString(minecraft.font, text, rightSide ? -minecraft.font.width(text) : 0, y, color);
+    }
+
+    private void drawAligned(GuiGraphics guiGraphics, Minecraft minecraft, String text, int y, int color, boolean rightSide) {
+        guiGraphics.drawString(minecraft.font, text, rightSide ? -minecraft.font.width(text) : 0, y, color);
     }
 
     private String requirementsText(AbilityData abilityData, ActiveAbility ability) {
@@ -175,14 +201,7 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
         if (ability != lastRequirementAbility || key != lastRequirementKey) {
             lastRequirementAbility = ability;
             lastRequirementKey = key;
-            StringBuilder text = new StringBuilder();
-            if (killRequirement > 0 && kills < killRequirement) {
-                text.append(' ').append(kills).append('/').append(killRequirement).append(" kills");
-            }
-            if (damageRequirement > 0 && progress.get().getDamageTaken() < damageRequirement) {
-                text.append(' ').append(damage).append('/').append((int) damageRequirement).append(" dmg");
-            }
-            lastRequirementText = text.toString();
+            lastRequirementText = AbilityIcons.requirementFragment(progress.get(), killRequirement, damageRequirement);
         }
         return lastRequirementText;
     }
@@ -201,22 +220,21 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
         for (AbilityNotifications.Notice notice : AbilityNotifications.activatedNotices()) {
             AbilityIcons.render(guiGraphics, minecraft.font, notice.ability(), MARGIN, bannerY, ICON_SIZE);
             int textX = MARGIN + ICON_SIZE + 4;
-            guiGraphics.drawString(minecraft.font,
-                    Component.translatable("hud.player_abilities.triggered_activated", AbilityIcons.name(notice.ability())),
-                    textX, bannerY + 2, TEXT_PRIMARY);
-            guiGraphics.drawString(minecraft.font,
-                    Component.translatable("hud.player_abilities.cooldown_duration",
-                            String.format(Locale.ROOT, "%.0f", notice.cooldownTicks() / 20.0f)),
-                    textX, bannerY + 2 + minecraft.font.lineHeight, TEXT_MUTED);
+            guiGraphics.drawString(minecraft.font, notice.title(), textX, bannerY + 2, TEXT_PRIMARY);
+            guiGraphics.drawString(minecraft.font, notice.subtitle(), textX, bannerY + 2 + minecraft.font.lineHeight, TEXT_MUTED);
             bannerY += ICON_SIZE + 6;
         }
-        int readyY = guiGraphics.guiHeight() - MARGIN - CELL_SIZE - 6 - minecraft.font.lineHeight;
+    }
+
+    private int renderReadyNotices(GuiGraphics guiGraphics, Minecraft minecraft, int stackCursor,
+                                   boolean rightSide, boolean topSide) {
         for (AbilityNotifications.Notice notice : AbilityNotifications.readyNotices()) {
-            guiGraphics.drawString(minecraft.font,
-                    Component.translatable("hud.player_abilities.ability_ready", AbilityIcons.name(notice.ability())),
-                    MARGIN, readyY, READY_NOTICE_COLOR);
-            readyY -= minecraft.font.lineHeight + 2;
+            int lineY = topSide ? stackCursor : stackCursor - minecraft.font.lineHeight;
+            int lineX = rightSide ? guiGraphics.guiWidth() - MARGIN - minecraft.font.width(notice.title()) : MARGIN;
+            guiGraphics.drawString(minecraft.font, notice.title(), lineX, lineY, READY_NOTICE_COLOR);
+            stackCursor += (topSide ? 1 : -1) * (minecraft.font.lineHeight + 2);
         }
+        return stackCursor;
     }
 
     private void renderCastBar(GuiGraphics guiGraphics, Minecraft minecraft, ActiveCast cast) {
@@ -235,12 +253,17 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
         guiGraphics.fill(barX - 1, barY - 1, barX + CAST_BAR_WIDTH + 1, barY + CAST_BAR_HEIGHT + 1, CELL_BORDER);
         guiGraphics.fill(barX, barY, barX + CAST_BAR_WIDTH, barY + CAST_BAR_HEIGHT, CAST_BAR_BACKGROUND);
         guiGraphics.fill(barX, barY, barX + Mth.ceil(CAST_BAR_WIDTH * progress), barY + CAST_BAR_HEIGHT, CAST_BAR_FILL);
-        String remainingText = String.format(Locale.ROOT, "%.1fs", remainingTicks / 20.0f);
-        guiGraphics.drawCenteredString(minecraft.font, remainingText, centerX,
+        int castHalfSeconds = remainingTicks / 2;
+        if (castHalfSeconds != lastCastHalfSeconds) {
+            lastCastHalfSeconds = castHalfSeconds;
+            lastCastText = String.format(Locale.ROOT, "%.1fs", remainingTicks / 20.0f);
+        }
+        guiGraphics.drawCenteredString(minecraft.font, lastCastText, centerX,
                 barY + (CAST_BAR_HEIGHT - minecraft.font.lineHeight) / 2 + 1, TEXT_PRIMARY);
     }
 
-    private void renderEffects(GuiGraphics guiGraphics, Minecraft minecraft, AbilityData abilityData, int bottomY) {
+    private void renderEffects(GuiGraphics guiGraphics, Minecraft minecraft, AbilityData abilityData,
+                               int stackCursor, boolean rightSide, boolean topSide) {
         Map<Ability, ActiveEffect> effects = abilityData.getActiveEffects();
         if (effects.isEmpty()) {
             if (!effectLineCache.isEmpty()) {
@@ -249,11 +272,19 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
             return;
         }
         effectLineCache.keySet().retainAll(effects.keySet());
-        int lineY = bottomY - minecraft.font.lineHeight;
         for (Map.Entry<Ability, ActiveEffect> entry : effects.entrySet()) {
-            guiGraphics.drawString(minecraft.font,
-                    effectLine(entry.getKey(), entry.getValue()), MARGIN, lineY, TEXT_MUTED);
-            lineY -= minecraft.font.lineHeight + 1;
+            int lineY = topSide ? stackCursor : stackCursor - EFFECT_ICON_SIZE;
+            int iconX = rightSide ? guiGraphics.guiWidth() - MARGIN - EFFECT_ICON_SIZE : MARGIN;
+            AbilityIcons.render(guiGraphics, minecraft.font, entry.getKey(), iconX, lineY, EFFECT_ICON_SIZE);
+            Component text = effectLine(entry.getKey(), entry.getValue());
+            float textX = rightSide ? iconX - 2 - minecraft.font.width(text) * EFFECT_TEXT_SCALE
+                    : iconX + EFFECT_ICON_SIZE + 2;
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().translate(textX, lineY + 2, 0);
+            guiGraphics.pose().scale(EFFECT_TEXT_SCALE, EFFECT_TEXT_SCALE, 1.0f);
+            guiGraphics.drawString(minecraft.font, text, 0, 0, TEXT_MUTED);
+            guiGraphics.pose().popPose();
+            stackCursor += (topSide ? 1 : -1) * (EFFECT_ICON_SIZE + 2);
         }
     }
 

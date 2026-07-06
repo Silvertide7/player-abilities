@@ -11,8 +11,8 @@ public final class BuiltInAbilities {
             DeferredRegister.create(AbilityRegistry.ABILITY_REGISTRY_KEY, PlayerAbilities.MOD_ID);
 
     static {
-        ABILITIES.register("water_walking", WaterWalkingAbility::new);
         ABILITIES.register("guardian_angel", GuardianAngelAbility::new);
+        ABILITIES.register("adrenaline", AdrenalineAbility::new);
     }
 
     private BuiltInAbilities() {

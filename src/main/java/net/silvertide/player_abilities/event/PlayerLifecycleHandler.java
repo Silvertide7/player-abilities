@@ -1,6 +1,7 @@
 package net.silvertide.player_abilities.event;
 
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -11,9 +12,9 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.AbilityAPI;
 import net.silvertide.player_abilities.api.PassiveAbility;
+import net.silvertide.player_abilities.api.PlayerTriggers;
 import net.silvertide.player_abilities.data.AbilityAttachments;
 import net.silvertide.player_abilities.data.AbilityData;
-import net.silvertide.player_abilities.data.ActiveCast;
 import net.silvertide.player_abilities.network.AbilitySync;
 
 @EventBusSubscriber(modid = PlayerAbilities.MOD_ID)
@@ -44,6 +45,7 @@ public final class PlayerLifecycleHandler {
     public static void onRespawn(PlayerEvent.PlayerRespawnEvent event) {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
             AbilitySync.syncAllState(serverPlayer);
+            AbilityAPI.fireTrigger(PlayerTriggers.RESPAWN, serverPlayer);
         }
     }
 
@@ -65,18 +67,33 @@ public final class PlayerLifecycleHandler {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onDeath(LivingDeathEvent event) {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
+            AbilityAPI.fireTrigger(PlayerTriggers.DEATH, serverPlayer, event.getSource());
             AbilityAPI.cancelCast(serverPlayer);
             AbilityAPI.clearEffects(serverPlayer);
         }
         if (event.getSource().getEntity() instanceof ServerPlayer killer) {
             AbilityAPI.recordKill(killer);
+            AbilityAPI.fireTrigger(PlayerTriggers.KILL, killer, event.getEntity());
         }
     }
 
     @SubscribeEvent
-    public static void onDamageTaken(LivingDamageEvent.Post event) {
-        if (event.getEntity() instanceof ServerPlayer serverPlayer && event.getNewDamage() > 0) {
-            AbilityAPI.recordDamageTaken(serverPlayer, event.getNewDamage());
+    public static void onDamageDealt(LivingDamageEvent.Post event) {
+        if (event.getNewDamage() <= 0) {
+            return;
+        }
+        if (event.getEntity() instanceof ServerPlayer victim) {
+            AbilityAPI.recordDamageTaken(victim, event.getNewDamage());
+            AbilityAPI.fireTrigger(PlayerTriggers.DAMAGE_TAKEN, victim,
+                    new PlayerTriggers.DamageTaken(event.getNewDamage(), event.getSource()));
+            float healthAfter = victim.getHealth();
+            float healthBefore = Math.min(victim.getMaxHealth(), healthAfter + event.getNewDamage());
+            AbilityAPI.fireTrigger(PlayerTriggers.HEALTH_DROPPED, victim,
+                    new PlayerTriggers.HealthChange(healthBefore, healthAfter, victim.getMaxHealth()));
+        }
+        if (event.getSource().getEntity() instanceof ServerPlayer attacker && attacker != event.getEntity()) {
+            AbilityAPI.fireTrigger(PlayerTriggers.DEALT_DAMAGE, attacker,
+                    new PlayerTriggers.DamageDealt(event.getEntity(), event.getNewDamage()));
         }
     }
 
@@ -85,10 +102,11 @@ public final class PlayerLifecycleHandler {
         if (!(event.getEntity() instanceof ServerPlayer serverPlayer)) {
             return;
         }
-        if (event.getNewDamage() < serverPlayer.getHealth() + serverPlayer.getAbsorptionAmount()) {
+        if (event.getNewDamage() < serverPlayer.getHealth()) {
             return;
         }
-        if (AbilityAPI.triggerOnLethalDamage(serverPlayer, event.getNewDamage())) {
+        if (AbilityAPI.fireTrigger(PlayerTriggers.LETHAL_DAMAGE, serverPlayer,
+                new PlayerTriggers.DamageTaken(event.getNewDamage(), event.getSource()))) {
             event.setNewDamage(0);
         }
     }
@@ -103,21 +121,21 @@ public final class PlayerLifecycleHandler {
 
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
-        AbilityData abilityData = event.getEntity().getData(AbilityAttachments.ABILITY_DATA);
+        Player player = event.getEntity();
+        AbilityData abilityData = player.getData(AbilityAttachments.ABILITY_DATA);
         abilityData.tickCooldowns();
-        if (event.getEntity() instanceof ServerPlayer serverPlayer) {
-            AbilityAPI.tickActiveCast(serverPlayer);
-            AbilityAPI.tickEffects(serverPlayer);
+        if (player instanceof ServerPlayer serverPlayer) {
+            AbilityAPI.serverTick(serverPlayer);
         } else {
-            abilityData.getActiveCast().ifPresent(ActiveCast::incrementElapsed);
+            abilityData.incrementCastElapsed();
             abilityData.tickEffectsClient();
         }
     }
 
     private static void reapplyPassives(ServerPlayer grantSourcePlayer, ServerPlayer targetPlayer) {
         AbilityAPI.getGrantedLevels(grantSourcePlayer).forEach((ability, level) -> {
-            if (ability instanceof PassiveAbility passive) {
-                passive.onActivated(targetPlayer, level);
+            if (ability instanceof PassiveAbility passive && AbilityAPI.isPassiveEnabled(grantSourcePlayer, passive)) {
+                AbilityAPI.activatePassive(targetPlayer, passive, level);
             }
         });
     }

@@ -20,7 +20,7 @@ public final class RestfulMeditationAbility extends ActiveAbility {
     private static final int FULL_FOOD_LEVEL = 20;
 
     @Override
-    public AbilityUseType getCastType() {
+    public AbilityUseType getUseType() {
         return AbilityUseType.CHARGED;
     }
 

@@ -29,4 +29,8 @@ public final class AbilityRegistry {
     public static Optional<GatedAbility> getGated(ResourceLocation abilityId) {
         return ABILITIES.get(abilityId) instanceof GatedAbility gated ? Optional.of(gated) : Optional.empty();
     }
+
+    public static Optional<PassiveAbility> getPassive(ResourceLocation abilityId) {
+        return ABILITIES.get(abilityId) instanceof PassiveAbility passive ? Optional.of(passive) : Optional.empty();
+    }
 }

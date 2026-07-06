@@ -16,6 +16,9 @@ import net.silvertide.player_abilities.api.TriggeredAbility;
 import net.silvertide.player_abilities.config.AbilityConfigs;
 import net.silvertide.player_abilities.data.AbilityAttachments;
 import net.silvertide.player_abilities.data.AbilityData;
+import net.silvertide.player_abilities.api.client.AbilityClientAPI;
+import net.silvertide.player_abilities.data.RequirementProgress;
+import net.silvertide.player_abilities.item.AbilityBookItem;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -39,9 +42,11 @@ public final class AbilityBookScreen extends Screen {
     private static final int TEXT_PRIMARY = 0xFFFFFF;
     private static final int TEXT_MUTED = 0xA0A0B0;
     private static final int STATUS_PENDING = 0xFFCC66;
-    private static final int MAX_DISPLAYED_LEVEL = 100;
     private static final int TOOLTIP_WIDTH = 180;
     private static final Component READY = Component.translatable("hud.player_abilities.ready");
+    private static final Component PASSIVE_ON = Component.translatable("gui.player_abilities.passive_on");
+    private static final Component PASSIVE_OFF = Component.translatable("gui.player_abilities.passive_off");
+    private static final int PASSIVE_ON_COLOR = 0xFF66DD66;
 
     private enum Tab {
         ACTIVE(ActiveAbility.class, "gui.player_abilities.section_active"),
@@ -60,6 +65,9 @@ public final class AbilityBookScreen extends Screen {
     private record TabButton(Tab tab, Component label, int leftX, int rightX) {
     }
 
+    private record StatusLine(long key, String text) {
+    }
+
     private sealed interface Row {
         record Header(Component title) implements Row {
         }
@@ -71,6 +79,9 @@ public final class AbilityBookScreen extends Screen {
     private final AbilityData abilityData;
     private final List<TabButton> tabButtons = new ArrayList<>();
     private final List<Row> rows = new ArrayList<>();
+    private final Map<GatedAbility, StatusLine> statusCache = new HashMap<>();
+    private Row.Entry lastTooltipEntry;
+    private List<FormattedCharSequence> lastTooltipLines = List.of();
     private Map<Ability, Integer> grantedLevels = Map.of();
     private int selectedTab;
     private double scrollOffset;
@@ -111,6 +122,9 @@ public final class AbilityBookScreen extends Screen {
 
     private void buildRows() {
         rows.clear();
+        statusCache.clear();
+        lastTooltipEntry = null;
+        lastTooltipLines = List.of();
         scrollOffset = 0;
         if (tabButtons.isEmpty()) {
             contentHeight = 0;
@@ -186,8 +200,12 @@ public final class AbilityBookScreen extends Screen {
             rowY += rowHeight;
         }
         guiGraphics.disableScissor();
+        if (hoveredEntry != lastTooltipEntry) {
+            lastTooltipEntry = hoveredEntry;
+            lastTooltipLines = hoveredEntry == null ? List.of() : buildTooltip(hoveredEntry);
+        }
         if (hoveredEntry != null) {
-            guiGraphics.renderTooltip(font, buildTooltip(hoveredEntry), mouseX, mouseY);
+            guiGraphics.renderTooltip(font, lastTooltipLines, mouseX, mouseY);
         }
     }
 
@@ -198,13 +216,16 @@ public final class AbilityBookScreen extends Screen {
         lines.add(AbilityIcons.nameWithLevel(ability, level).getVisualOrderText());
         AbilityIcons.description(ability).ifPresent(description ->
                 lines.addAll(font.split(description.copy().withStyle(ChatFormatting.GRAY), TOOLTIP_WIDTH)));
-        int maxLevel = AbilityConfigs.maxLevel(ability);
         lines.add(Component.translatable("gui.player_abilities.tooltip_level",
-                        level, maxLevel > MAX_DISPLAYED_LEVEL ? "-" : String.valueOf(maxLevel))
+                        level, AbilityConfigs.maxLevel(ability))
                 .withStyle(ChatFormatting.DARK_GRAY).getVisualOrderText());
-        lines.add(Component.translatable(kindKey(ability)).withStyle(ChatFormatting.DARK_GRAY).getVisualOrderText());
+        lines.add(Component.translatable(AbilityBookItem.kindTranslationKey(ability)).withStyle(ChatFormatting.DARK_GRAY).getVisualOrderText());
         lines.add(Component.literal(AbilityIcons.categoryLabel(AbilityConfigs.category(ability)))
                 .withStyle(ChatFormatting.AQUA).getVisualOrderText());
+        if (ability instanceof PassiveAbility) {
+            lines.add(Component.translatable("gui.player_abilities.tooltip_toggle_hint")
+                    .withStyle(ChatFormatting.DARK_GRAY).getVisualOrderText());
+        }
         if (ability instanceof GatedAbility gated) {
             int cooldownTicks = AbilityConfigs.cooldownTicks(gated, level);
             if (cooldownTicks > 0) {
@@ -225,16 +246,6 @@ public final class AbilityBookScreen extends Screen {
         return lines;
     }
 
-    private String kindKey(Ability ability) {
-        if (ability instanceof TriggeredAbility) {
-            return "gui.player_abilities.section_triggered";
-        }
-        if (ability instanceof PassiveAbility) {
-            return "gui.player_abilities.section_passive";
-        }
-        return "gui.player_abilities.section_active";
-    }
-
     private void renderRow(GuiGraphics guiGraphics, Row row, int rowX, int rowY) {
         if (row instanceof Row.Header header) {
             guiGraphics.drawString(font, header.title(), rowX, rowY + 4, HEADER_COLOR);
@@ -251,35 +262,49 @@ public final class AbilityBookScreen extends Screen {
             } else {
                 guiGraphics.drawString(font, status, rowX + PANEL_WIDTH - PANEL_PADDING * 2 - font.width(status), rowY + 4, STATUS_PENDING);
             }
+        } else if (entry.ability() instanceof PassiveAbility passive) {
+            Component state = abilityData.isPassiveDisabled(passive) ? PASSIVE_OFF : PASSIVE_ON;
+            int stateColor = abilityData.isPassiveDisabled(passive) ? TEXT_MUTED : PASSIVE_ON_COLOR;
+            guiGraphics.drawString(font, state, rowX + PANEL_WIDTH - PANEL_PADDING * 2 - font.width(state), rowY + 4, stateColor);
         }
     }
 
     private String statusText(GatedAbility ability, int level) {
-        StringBuilder status = new StringBuilder();
-        abilityData.getCooldown(ability).ifPresent(cooldown ->
-                status.append(String.format(Locale.ROOT, "%.0fs", cooldown.remainingTicks() / 20.0f)));
-        abilityData.getRequirementProgress(ability).ifPresent(progress -> {
-            int requiredKills = AbilityConfigs.killRequirement(ability, level);
-            float requiredDamage = AbilityConfigs.damageTakenRequirement(ability, level);
-            if (requiredKills > 0 && progress.getKills() < requiredKills) {
-                appendStatus(status, Math.min(progress.getKills(), requiredKills) + "/" + requiredKills + " kills");
+        int cooldownSeconds = abilityData.getCooldown(ability)
+                .map(cooldown -> Mth.ceil(cooldown.remainingTicks() / 20.0f)).orElse(0);
+        RequirementProgress progress = abilityData.getRequirementProgress(ability).orElse(null);
+        long key = ((long) cooldownSeconds << 41)
+                | ((long) (progress == null ? 0xFFFFF : progress.getKills() & 0xFFFFF) << 20)
+                | (progress == null ? 0xFFFFF : (int) progress.getDamageTaken() & 0xFFFFF);
+        StatusLine cached = statusCache.get(ability);
+        if (cached == null || cached.key() != key) {
+            StringBuilder status = new StringBuilder();
+            if (cooldownSeconds > 0) {
+                status.append(cooldownSeconds).append('s');
             }
-            if (requiredDamage > 0 && progress.getDamageTaken() < requiredDamage) {
-                appendStatus(status, (int) progress.getDamageTaken() + "/" + (int) requiredDamage + " dmg");
+            if (progress != null) {
+                String fragment = AbilityIcons.requirementFragment(progress,
+                        AbilityConfigs.killRequirement(ability, level),
+                        AbilityConfigs.damageTakenRequirement(ability, level));
+                if (!fragment.isEmpty()) {
+                    if (!status.isEmpty()) {
+                        status.append(' ');
+                    }
+                    status.append(fragment);
+                }
             }
-        });
-        return status.toString();
-    }
-
-    private static void appendStatus(StringBuilder status, String part) {
-        if (!status.isEmpty()) {
-            status.append(' ');
+            cached = new StatusLine(key, status.toString());
+            statusCache.put(ability, cached);
         }
-        status.append(part);
+        return cached.text();
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && lastTooltipEntry != null && lastTooltipEntry.ability() instanceof PassiveAbility passive) {
+            AbilityClientAPI.togglePassive(passive);
+            return true;
+        }
         if (button == 0 && mouseY >= tabTop && mouseY <= tabTop + TAB_HEIGHT) {
             for (int i = 0; i < tabButtons.size(); i++) {
                 TabButton tabButton = tabButtons.get(i);

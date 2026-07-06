@@ -13,6 +13,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.Ability;
+import net.silvertide.player_abilities.data.RequirementProgress;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -111,6 +112,24 @@ public final class AbilityIcons {
         } else {
             guiGraphics.drawCenteredString(font, initials(ability), x + size / 2, y + (size - font.lineHeight) / 2 + 1, 0xFFFFFF);
         }
+    }
+
+    public static String requirementFragment(RequirementProgress progress, int killRequirement, float damageRequirement) {
+        StringBuilder text = new StringBuilder();
+        if (killRequirement > 0 && progress.getKills() < killRequirement) {
+            appendPart(text, Math.min(progress.getKills(), killRequirement) + "/" + killRequirement + " kills");
+        }
+        if (damageRequirement > 0 && progress.getDamageTaken() < damageRequirement) {
+            appendPart(text, (int) Math.min(progress.getDamageTaken(), damageRequirement) + "/" + (int) damageRequirement + " dmg");
+        }
+        return text.toString();
+    }
+
+    private static void appendPart(StringBuilder text, String part) {
+        if (!text.isEmpty()) {
+            text.append(' ');
+        }
+        text.append(part);
     }
 
     private record LeveledNameKey(Ability ability, int level) {

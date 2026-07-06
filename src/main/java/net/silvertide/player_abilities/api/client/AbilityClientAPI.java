@@ -4,9 +4,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.silvertide.player_abilities.api.ActiveAbility;
+import net.silvertide.player_abilities.api.PassiveAbility;
 import net.silvertide.player_abilities.data.AbilityAttachments;
 import net.silvertide.player_abilities.network.CastAbilityPayload;
 import net.silvertide.player_abilities.network.SelectAbilityPayload;
+import net.silvertide.player_abilities.network.TogglePassivePayload;
 
 public final class AbilityClientAPI {
     private AbilityClientAPI() {
@@ -23,5 +25,9 @@ public final class AbilityClientAPI {
 
     public static void cast() {
         PacketDistributor.sendToServer(CastAbilityPayload.INSTANCE);
+    }
+
+    public static void togglePassive(PassiveAbility passive) {
+        PacketDistributor.sendToServer(new TogglePassivePayload(passive.getId()));
     }
 }

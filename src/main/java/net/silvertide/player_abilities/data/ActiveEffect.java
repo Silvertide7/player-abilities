@@ -43,7 +43,7 @@ public final class ActiveEffect {
         return remainingTicks;
     }
 
-    public void decrementRemaining() {
+    void decrementRemaining() {
         remainingTicks--;
     }
 
@@ -56,7 +56,7 @@ public final class ActiveEffect {
         return effectData;
     }
 
-    public void setEffectData(@Nullable Object effectData) {
+    void setEffectData(@Nullable Object effectData) {
         this.effectData = effectData;
     }
 }

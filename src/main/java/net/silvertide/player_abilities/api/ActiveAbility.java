@@ -5,7 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class ActiveAbility extends GatedAbility {
-    public abstract AbilityUseType getCastType();
+    public abstract AbilityUseType getUseType();
 
     public int getCastTicks(int level) {
         return 0;
@@ -33,10 +33,6 @@ public abstract class ActiveAbility extends GatedAbility {
 
     public boolean requiresStationary() {
         return false;
-    }
-
-    public int getEffectDurationTicks(int level) {
-        return 0;
     }
 
     @Nullable

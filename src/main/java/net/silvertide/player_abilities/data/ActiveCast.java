@@ -44,7 +44,7 @@ public final class ActiveCast {
         return elapsedTicks;
     }
 
-    public void incrementElapsed() {
+    void incrementElapsed() {
         elapsedTicks++;
     }
 
@@ -52,7 +52,7 @@ public final class ActiveCast {
         return lastHurtTime;
     }
 
-    public void setLastHurtTime(int lastHurtTime) {
+    void setLastHurtTime(int lastHurtTime) {
         this.lastHurtTime = lastHurtTime;
     }
 
@@ -60,7 +60,7 @@ public final class ActiveCast {
         return completing;
     }
 
-    public void markCompleting() {
+    void markCompleting() {
         completing = true;
     }
 
@@ -69,7 +69,7 @@ public final class ActiveCast {
         return castData;
     }
 
-    public void setCastData(@Nullable Object castData) {
+    void setCastData(@Nullable Object castData) {
         this.castData = castData;
     }
 }

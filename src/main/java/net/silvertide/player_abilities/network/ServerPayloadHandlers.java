@@ -17,6 +17,16 @@ public final class ServerPayloadHandlers {
         }
     }
 
+    public static void handleTogglePassive(TogglePassivePayload payload, IPayloadContext context) {
+        if (!(context.player() instanceof ServerPlayer player)) {
+            return;
+        }
+        AbilityData abilityData = player.getData(AbilityAttachments.ABILITY_DATA);
+        AbilityRegistry.getPassive(payload.abilityId())
+                .filter(abilityData::isGranted)
+                .ifPresent(passive -> AbilityAPI.setPassiveEnabled(player, passive, abilityData.isPassiveDisabled(passive)));
+    }
+
     public static void handleSelect(SelectAbilityPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) {
             return;

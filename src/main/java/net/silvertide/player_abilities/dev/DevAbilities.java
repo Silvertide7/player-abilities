@@ -16,8 +16,11 @@ public final class DevAbilities {
 
     @SubscribeEvent
     public static void onRegister(RegisterEvent event) {
-        event.register(AbilityRegistry.ABILITY_REGISTRY_KEY, helper ->
-                helper.register(ResourceLocation.fromNamespaceAndPath(DEV_NAMESPACE, "restful_meditation"),
-                        new RestfulMeditationAbility()));
+        event.register(AbilityRegistry.ABILITY_REGISTRY_KEY, helper -> {
+            helper.register(ResourceLocation.fromNamespaceAndPath(DEV_NAMESPACE, "restful_meditation"),
+                    new RestfulMeditationAbility());
+            helper.register(ResourceLocation.fromNamespaceAndPath(DEV_NAMESPACE, "swift_step"),
+                    new SwiftStepAbility());
+        });
     }
 }
