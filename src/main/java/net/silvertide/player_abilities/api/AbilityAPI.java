@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Consumer;
 
 public final class AbilityAPI {
@@ -353,6 +354,10 @@ public final class AbilityAPI {
         for (Map.Entry<Ability, ActiveEffect> entry : List.copyOf(abilityData.getActiveEffects().entrySet())) {
             Ability ability = entry.getKey();
             ActiveEffect effect = entry.getValue();
+            if (!AbilityConfigs.isEnabled(ability)) {
+                removeEffect(player, ability);
+                continue;
+            }
             abilityData.decrementEffect(effect);
             ability.onEffectTick(player, effect.getLevel(), effect.getRemainingTicks());
             if (effect.isExpired() && abilityData.isCurrentEffect(ability, effect)) {
@@ -385,6 +390,18 @@ public final class AbilityAPI {
         if (level == 0 || abilityData.isOnCooldown(ability)) {
             return false;
         }
+        FiringTrigger firingTrigger = new FiringTrigger(player.getUUID(), ability);
+        if (!FIRING_TRIGGERS.add(firingTrigger)) {
+            return false;
+        }
+        try {
+            return runTrigger(player, abilityData, ability, level);
+        } finally {
+            FIRING_TRIGGERS.remove(firingTrigger);
+        }
+    }
+
+    private static boolean runTrigger(ServerPlayer player, AbilityData abilityData, TriggeredAbility<?> ability, int level) {
         Optional<RequirementProgress> pendingRequirements = abilityData.getRequirementProgress(ability);
         if (pendingRequirements.isPresent()
                 && !pendingRequirements.get().meets(AbilityConfigs.killRequirement(ability, level),
@@ -409,19 +426,24 @@ public final class AbilityAPI {
         return true;
     }
 
+    private record FiringTrigger(java.util.UUID playerId, TriggeredAbility<?> ability) {
+    }
+
+    private static final java.util.Set<FiringTrigger> FIRING_TRIGGERS = new java.util.HashSet<>();
+
     public static boolean fireTrigger(AbilityTrigger<Void> trigger, ServerPlayer player) {
         return fireTrigger(trigger, player, null);
     }
 
     public static <T> boolean fireTrigger(AbilityTrigger<T> trigger, ServerPlayer player, T context) {
         boolean anyFired = false;
-        for (Map.Entry<Ability, Integer> entry : getData(player).getGrantedLevels().entrySet()) {
-            if (!(entry.getKey() instanceof TriggeredAbility<?> triggered) || triggered.getTrigger() != trigger) {
+        for (AbilityData.TriggeredGrant grant : getData(player).getTriggeredGrants()) {
+            if (grant.ability().getTrigger() != trigger) {
                 continue;
             }
             @SuppressWarnings("unchecked")
-            TriggeredAbility<T> matched = (TriggeredAbility<T>) triggered;
-            if (matched.shouldTrigger(player, entry.getValue(), context) && trigger(player, matched)) {
+            TriggeredAbility<T> matched = (TriggeredAbility<T>) grant.ability();
+            if (matched.shouldTrigger(player, grant.level(), context) && trigger(player, matched)) {
                 anyFired = true;
                 if (trigger.isExclusive()) {
                     return true;
@@ -429,6 +451,35 @@ public final class AbilityAPI {
             }
         }
         return anyFired;
+    }
+
+    public static void applyEnabledTransitions(ServerPlayer player, Set<Ability> newlyDisabled, Set<Ability> newlyEnabled) {
+        AbilityData abilityData = getData(player);
+        for (Ability ability : newlyDisabled) {
+            int rawLevel = abilityData.getEffectiveLevelIgnoringDisabled(ability);
+            if (rawLevel == 0) {
+                continue;
+            }
+            if (abilityData.getActiveUse().filter(use -> use.getAbility().equals(ability)).isPresent()) {
+                cancelUse(player);
+            }
+            if (abilityData.getSelected().filter(ability::equals).isPresent()) {
+                abilityData.setSelected(null);
+            }
+            if (abilityData.getEffect(ability).isPresent()) {
+                removeEffect(player, ability);
+            }
+            if (ability instanceof PassiveAbility passive && !abilityData.isPassiveDisabled(passive)) {
+                deactivatePassive(player, passive, rawLevel);
+            }
+        }
+        for (Ability ability : newlyEnabled) {
+            int level = abilityData.getEffectiveLevel(ability);
+            if (level > 0 && ability instanceof PassiveAbility passive && !abilityData.isPassiveDisabled(passive)) {
+                activatePassive(player, passive, level);
+            }
+        }
+        AbilitySync.syncAbilities(player);
     }
 
     public static boolean isPassiveEnabled(Player player, PassiveAbility passive) {
@@ -480,7 +531,7 @@ public final class AbilityAPI {
         }
     }
 
-    private static void removeAttributeGrants(ServerPlayer player, PassiveAbility passive, int level) {
+    public static void removeAttributeGrants(ServerPlayer player, PassiveAbility passive, int level) {
         List<AttributeGrant> declaredEverywhere = new ArrayList<>(AbilityConfigs.attributeGrants(passive, level));
         declaredEverywhere.addAll(passive.getAttributeGrants(level));
         for (AttributeGrant attributeGrant : declaredEverywhere) {

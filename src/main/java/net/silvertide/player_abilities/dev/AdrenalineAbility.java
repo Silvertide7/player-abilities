@@ -1,4 +1,4 @@
-package net.silvertide.player_abilities.content;
+package net.silvertide.player_abilities.dev;
 
 import net.minecraft.world.effect.MobEffects;
 import net.silvertide.player_abilities.api.AbilityTrigger;

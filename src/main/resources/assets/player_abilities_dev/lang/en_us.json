@@ -2,5 +2,9 @@
   "ability.player_abilities_dev.restful_meditation": "Restful Meditation",
   "ability.player_abilities_dev.swift_step": "Swift Step",
   "ability.player_abilities_dev.swift_step.description": "You move 20% faster per level. Passive.",
+  "ability.player_abilities_dev.guardian_angel": "Guardian Angel",
+  "ability.player_abilities_dev.adrenaline": "Adrenaline",
+  "ability.player_abilities_dev.guardian_angel.description": "When a blow would kill you, survive it and recover to full health instead.",
+  "ability.player_abilities_dev.adrenaline.description": "Taking damage sends adrenaline through your veins, granting Speed I for 10 seconds.",
   "ability.player_abilities_dev.restful_meditation.description": "Meditate in place to enter a restful trance, restoring health and hunger over time. Moving breaks the trance."
 }

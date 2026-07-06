@@ -21,6 +21,10 @@ public final class DevAbilities {
                     new RestfulMeditationAbility());
             helper.register(ResourceLocation.fromNamespaceAndPath(DEV_NAMESPACE, "swift_step"),
                     new SwiftStepAbility());
+            helper.register(ResourceLocation.fromNamespaceAndPath(DEV_NAMESPACE, "guardian_angel"),
+                    new GuardianAngelAbility());
+            helper.register(ResourceLocation.fromNamespaceAndPath(DEV_NAMESPACE, "adrenaline"),
+                    new AdrenalineAbility());
         });
     }
 }

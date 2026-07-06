@@ -20,6 +20,7 @@ import net.silvertide.player_abilities.api.AbilityAPI;
 import net.silvertide.player_abilities.api.AbilityRegistry;
 import net.silvertide.player_abilities.api.PassiveAbility;
 import net.silvertide.player_abilities.api.TriggeredAbility;
+import net.silvertide.player_abilities.config.AbilityConfigs;
 
 import java.util.List;
 
@@ -63,12 +64,18 @@ public class AbilityBookItem extends Item {
             return InteractionResultHolder.fail(stack);
         }
         Component abilityName = Component.translatable(ability.getDescriptionId());
-        if (AbilityAPI.getLevel(serverPlayer, ability) >= content.level()) {
+        if (!AbilityConfigs.isEnabled(ability)) {
+            serverPlayer.displayClientMessage(
+                    Component.translatable("message.player_abilities.book_ability_disabled", abilityName), true);
+            return InteractionResultHolder.fail(stack);
+        }
+        int grantLevel = Math.min(content.level(), AbilityConfigs.maxLevel(ability));
+        if (AbilityAPI.getLevel(serverPlayer, ability) >= grantLevel) {
             serverPlayer.displayClientMessage(
                     Component.translatable("message.player_abilities.book_already_known", abilityName), true);
             return InteractionResultHolder.fail(stack);
         }
-        AbilityAPI.grant(serverPlayer, BOOK_SOURCE, ability, content.level());
+        AbilityAPI.grant(serverPlayer, BOOK_SOURCE, ability, grantLevel);
         serverPlayer.displayClientMessage(
                 Component.translatable("message.player_abilities.book_learned", abilityName), true);
         level.playSound(null, player.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.6f, 1.2f);

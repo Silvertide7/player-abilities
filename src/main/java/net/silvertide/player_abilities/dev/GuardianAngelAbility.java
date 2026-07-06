@@ -1,4 +1,4 @@
-package net.silvertide.player_abilities.content;
+package net.silvertide.player_abilities.dev;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;

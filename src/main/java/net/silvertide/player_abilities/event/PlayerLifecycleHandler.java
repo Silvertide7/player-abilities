@@ -13,9 +13,13 @@ import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.AbilityAPI;
 import net.silvertide.player_abilities.api.PassiveAbility;
 import net.silvertide.player_abilities.api.PlayerTriggers;
+import net.silvertide.player_abilities.config.AbilityConfigs;
 import net.silvertide.player_abilities.data.AbilityAttachments;
 import net.silvertide.player_abilities.data.AbilityData;
 import net.silvertide.player_abilities.network.AbilitySync;
+
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @EventBusSubscriber(modid = PlayerAbilities.MOD_ID)
 public final class PlayerLifecycleHandler {
@@ -26,8 +30,11 @@ public final class PlayerLifecycleHandler {
     public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
             reapplyPassives(serverPlayer, serverPlayer);
-            AbilityAPI.getActiveEffects(serverPlayer).forEach((ability, effect) ->
-                    ability.onEffectStart(serverPlayer, effect.getLevel()));
+            AbilityAPI.getActiveEffects(serverPlayer).forEach((ability, effect) -> {
+                if (AbilityConfigs.isEnabled(ability)) {
+                    ability.onEffectStart(serverPlayer, effect.getLevel());
+                }
+            });
             AbilitySync.syncAllState(serverPlayer);
         }
     }
@@ -67,9 +74,9 @@ public final class PlayerLifecycleHandler {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onDeath(LivingDeathEvent event) {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
-            AbilityAPI.fireTrigger(PlayerTriggers.DEATH, serverPlayer, event.getSource());
             AbilityAPI.cancelUse(serverPlayer);
             AbilityAPI.clearEffects(serverPlayer);
+            AbilityAPI.fireTrigger(PlayerTriggers.DEATH, serverPlayer, event.getSource());
         }
         if (event.getSource().getEntity() instanceof ServerPlayer killer) {
             AbilityAPI.recordKill(killer);
@@ -83,13 +90,14 @@ public final class PlayerLifecycleHandler {
             return;
         }
         if (event.getEntity() instanceof ServerPlayer victim) {
+            float maxHealth = victim.getMaxHealth();
+            float healthAfter = victim.getHealth();
+            float healthBefore = Math.min(maxHealth, healthAfter + event.getNewDamage());
             AbilityAPI.recordDamageTaken(victim, event.getNewDamage());
             AbilityAPI.fireTrigger(PlayerTriggers.DAMAGE_TAKEN, victim,
                     new PlayerTriggers.DamageTaken(event.getNewDamage(), event.getSource()));
-            float healthAfter = victim.getHealth();
-            float healthBefore = Math.min(victim.getMaxHealth(), healthAfter + event.getNewDamage());
             AbilityAPI.fireTrigger(PlayerTriggers.HEALTH_DROPPED, victim,
-                    new PlayerTriggers.HealthChange(healthBefore, healthAfter, victim.getMaxHealth()));
+                    new PlayerTriggers.HealthChange(healthBefore, healthAfter, maxHealth));
         }
         if (event.getSource().getEntity() instanceof ServerPlayer attacker && attacker != event.getEntity()) {
             AbilityAPI.fireTrigger(PlayerTriggers.DEALT_DAMAGE, attacker,
@@ -102,7 +110,7 @@ public final class PlayerLifecycleHandler {
         if (!(event.getEntity() instanceof ServerPlayer serverPlayer)) {
             return;
         }
-        if (event.getNewDamage() < serverPlayer.getHealth()) {
+        if (event.getNewDamage() < serverPlayer.getHealth() + serverPlayer.getAbsorptionAmount()) {
             return;
         }
         if (AbilityAPI.fireTrigger(PlayerTriggers.LETHAL_DAMAGE, serverPlayer,
@@ -133,10 +141,19 @@ public final class PlayerLifecycleHandler {
     }
 
     private static void reapplyPassives(ServerPlayer grantSourcePlayer, ServerPlayer targetPlayer) {
-        AbilityAPI.getGrantedLevels(grantSourcePlayer).forEach((ability, level) -> {
-            if (ability instanceof PassiveAbility passive && AbilityAPI.isPassiveEnabled(grantSourcePlayer, passive)) {
-                AbilityAPI.activatePassive(targetPlayer, passive, level);
+        AbilityData abilityData = grantSourcePlayer.getData(AbilityAttachments.ABILITY_DATA);
+        Set<PassiveAbility> grantedPassives = abilityData.getGrantsBySource().values().stream()
+                .flatMap(abilityLevels -> abilityLevels.keySet().stream())
+                .filter(PassiveAbility.class::isInstance)
+                .map(PassiveAbility.class::cast)
+                .collect(Collectors.toSet());
+        for (PassiveAbility passive : grantedPassives) {
+            int rawLevel = abilityData.getEffectiveLevelIgnoringDisabled(passive);
+            if (AbilityConfigs.isEnabled(passive) && AbilityAPI.isPassiveEnabled(grantSourcePlayer, passive)) {
+                AbilityAPI.activatePassive(targetPlayer, passive, rawLevel);
+            } else {
+                AbilityAPI.removeAttributeGrants(targetPlayer, passive, rawLevel);
             }
-        });
+        }
     }
 }

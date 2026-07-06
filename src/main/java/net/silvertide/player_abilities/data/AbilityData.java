@@ -11,6 +11,7 @@ import net.silvertide.player_abilities.api.ActiveAbility;
 import net.silvertide.player_abilities.api.Cooldown;
 import net.silvertide.player_abilities.api.GatedAbility;
 import net.silvertide.player_abilities.api.PassiveAbility;
+import net.silvertide.player_abilities.api.TriggeredAbility;
 import net.silvertide.player_abilities.config.AbilityConfigs;
 import org.jetbrains.annotations.Nullable;
 
@@ -52,7 +53,13 @@ public class AbilityData {
     private final Map<GatedAbility, RequirementProgress> requirementProgress = new HashMap<>();
     private final Set<PassiveAbility> disabledPassives = new HashSet<>();
     @Nullable
+    private List<TriggeredGrant> cachedTriggeredGrants;
+    private int cachedTriggeredGeneration = -1;
+    @Nullable
     private ActiveAbility selected;
+
+    public record TriggeredGrant(TriggeredAbility<?> ability, int level) {
+    }
     @Nullable
     private ActiveUse activeUse;
 
@@ -130,6 +137,7 @@ public class AbilityData {
     }
 
     public int setGrant(ResourceLocation source, Ability ability, int level) {
+        cachedTriggeredGrants = null;
         Integer previousLevel = grants.computeIfAbsent(source, key -> new HashMap<>()).put(ability, level);
         return previousLevel == null ? 0 : previousLevel;
     }
@@ -139,6 +147,7 @@ public class AbilityData {
         if (abilityLevels == null || abilityLevels.remove(ability) == null) {
             return false;
         }
+        cachedTriggeredGrants = null;
         if (abilityLevels.isEmpty()) {
             grants.remove(source);
         }
@@ -146,6 +155,14 @@ public class AbilityData {
     }
 
     public int getEffectiveLevel(Ability ability) {
+        if (!AbilityConfigs.isEnabled(ability)) {
+            return 0;
+        }
+        int rawLevel = getEffectiveLevelIgnoringDisabled(ability);
+        return rawLevel == 0 ? 0 : Math.min(rawLevel, AbilityConfigs.maxLevel(ability));
+    }
+
+    public int getEffectiveLevelIgnoringDisabled(Ability ability) {
         int effectiveLevel = 0;
         for (Map<Ability, Integer> abilityLevels : grants.values()) {
             Integer level = abilityLevels.get(ability);
@@ -162,14 +179,33 @@ public class AbilityData {
 
     public Map<Ability, Integer> getGrantedLevels() {
         Map<Ability, Integer> effectiveLevels = new HashMap<>();
-        grants.values().forEach(abilityLevels -> abilityLevels.forEach((ability, level) ->
-                effectiveLevels.merge(ability, level, Math::max)));
+        grants.values().forEach(abilityLevels -> abilityLevels.forEach((ability, level) -> {
+            if (AbilityConfigs.isEnabled(ability)) {
+                effectiveLevels.merge(ability, Math.min(level, AbilityConfigs.maxLevel(ability)), Math::max);
+            }
+        }));
         return effectiveLevels;
+    }
+
+    public List<TriggeredGrant> getTriggeredGrants() {
+        int generation = AbilityConfigs.generation();
+        List<TriggeredGrant> cached = cachedTriggeredGrants;
+        if (cached == null || cachedTriggeredGeneration != generation) {
+            cached = getGrantedLevels().entrySet().stream()
+                    .filter(entry -> entry.getKey() instanceof TriggeredAbility<?>)
+                    .map(entry -> new TriggeredGrant((TriggeredAbility<?>) entry.getKey(), entry.getValue()))
+                    .sorted(Comparator.comparing(grant -> grant.ability().getId().toString()))
+                    .toList();
+            cachedTriggeredGrants = cached;
+            cachedTriggeredGeneration = generation;
+        }
+        return cached;
     }
 
     public Set<Ability> getGranted() {
         return grants.values().stream()
                 .flatMap(abilityLevels -> abilityLevels.keySet().stream())
+                .filter(AbilityConfigs::isEnabled)
                 .collect(Collectors.toUnmodifiableSet());
     }
 
@@ -336,6 +372,7 @@ public class AbilityData {
 
     public void replaceSyncedState(Map<Ability, Integer> grantedLevels, Set<PassiveAbility> newDisabledPassives,
                                    @Nullable ActiveAbility newSelected) {
+        cachedTriggeredGrants = null;
         grants.clear();
         if (!grantedLevels.isEmpty()) {
             grants.put(CLIENT_SYNCED_SOURCE, new HashMap<>(grantedLevels));

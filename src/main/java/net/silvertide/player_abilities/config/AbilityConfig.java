@@ -14,7 +14,8 @@ import net.silvertide.player_abilities.api.EffectGrant;
 import java.util.List;
 import java.util.Optional;
 
-public record AbilityConfig(Optional<LeveledValue<Integer>> cooldownTicks,
+public record AbilityConfig(Optional<Boolean> enabled,
+                            Optional<LeveledValue<Integer>> cooldownTicks,
                             Optional<LeveledValue<Integer>> killRequirement,
                             Optional<LeveledValue<Float>> damageTakenRequirement,
                             Optional<LeveledValue<Integer>> useTicks,
@@ -79,6 +80,7 @@ public record AbilityConfig(Optional<LeveledValue<Integer>> cooldownTicks,
     }
 
     public static final Codec<AbilityConfig> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Codec.BOOL.optionalFieldOf("enabled").forGetter(AbilityConfig::enabled),
             LeveledValue.codec(Codec.INT).optionalFieldOf("cooldown_ticks").forGetter(AbilityConfig::cooldownTicks),
             LeveledValue.codec(Codec.INT).optionalFieldOf("kill_requirement").forGetter(AbilityConfig::killRequirement),
             LeveledValue.codec(Codec.FLOAT).optionalFieldOf("damage_taken_requirement").forGetter(AbilityConfig::damageTakenRequirement),

@@ -12,7 +12,6 @@ import net.silvertide.player_abilities.api.AbilityRegistry;
 import net.silvertide.player_abilities.compat.pmmo.PmmoCompat;
 import net.silvertide.player_abilities.compat.puffish_skills.PuffishSkillsCompat;
 import net.silvertide.player_abilities.config.AbilityClientConfig;
-import net.silvertide.player_abilities.content.BuiltInAbilities;
 import net.silvertide.player_abilities.data.AbilityAttachments;
 import net.silvertide.player_abilities.item.AbilityItems;
 import org.slf4j.Logger;
@@ -31,7 +30,6 @@ public class PlayerAbilities {
         AbilityRegistry.register(modEventBus);
         AbilityAttachments.register(modEventBus);
         AbilityAttributes.register(modEventBus);
-        BuiltInAbilities.register(modEventBus);
         AbilityItems.register(modEventBus);
         if (ModList.get().isLoaded("pmmo")) {
             PmmoCompat.init();

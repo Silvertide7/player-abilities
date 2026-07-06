@@ -44,6 +44,7 @@ public final class AbilityBookScreen extends Screen {
     private static final int STATUS_PENDING = 0xFFCC66;
     private static final int TOOLTIP_WIDTH = 180;
     private static final Component READY = Component.translatable("hud.player_abilities.ready");
+    private static final Component NO_ABILITIES = Component.translatable("hud.player_abilities.no_abilities");
     private static final Component PASSIVE_ON = Component.translatable("gui.player_abilities.passive_on");
     private static final Component PASSIVE_OFF = Component.translatable("gui.player_abilities.passive_off");
     private static final int PASSIVE_ON_COLOR = 0xFF66DD66;
@@ -169,7 +170,7 @@ public final class AbilityBookScreen extends Screen {
         guiGraphics.fill(panelX, panelTop, panelX + PANEL_WIDTH, panelBottom, PANEL_BACKGROUND);
         guiGraphics.drawCenteredString(font, title, width / 2, panelTop - 14, TEXT_PRIMARY);
         if (tabButtons.isEmpty()) {
-            guiGraphics.drawCenteredString(font, Component.translatable("hud.player_abilities.no_abilities"),
+            guiGraphics.drawCenteredString(font, NO_ABILITIES,
                     width / 2, (panelTop + panelBottom) / 2, TEXT_MUTED);
             return;
         }

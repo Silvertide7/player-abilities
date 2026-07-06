@@ -58,6 +58,9 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
     private Ability lastRequirementAbility;
     private long lastRequirementKey = -1;
     private String lastRequirementText = "";
+    private String lastStatusCooldownPart;
+    private String lastStatusRequirementsPart;
+    private String lastStatusLine = "";
     private int contextualTicksRemaining;
     private int lastContextualTick = -1;
     private ActiveAbility lastContextualSelected;
@@ -87,34 +90,44 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
         renderNotifications(guiGraphics, minecraft);
 
         AbilityClientConfig.HudDisplay displayMode = AbilityClientConfig.HUD_DISPLAY.get();
-        if (displayMode == AbilityClientConfig.HudDisplay.NEVER) {
-            return;
-        }
-        boolean windowed = displayMode == AbilityClientConfig.HudDisplay.CONTEXTUAL
-                || displayMode == AbilityClientConfig.HudDisplay.MINIMIZE;
         AbilityClientConfig.HudPosition position = AbilityClientConfig.HUD_POSITION.get();
         boolean rightSide = position.isRight();
         boolean topSide = position.isTop();
         int cellX = rightSide ? guiGraphics.guiWidth() - MARGIN - CELL_SIZE : MARGIN;
         int cellY = topSide ? MARGIN : guiGraphics.guiHeight() - MARGIN - CELL_SIZE;
-        if (windowed && !isContextuallyVisible(player, abilityData, ability)) {
-            if (displayMode == AbilityClientConfig.HudDisplay.MINIMIZE && ability != null) {
+        boolean widgetVisible;
+        if (displayMode == AbilityClientConfig.HudDisplay.ALWAYS) {
+            widgetVisible = true;
+        } else if (displayMode == AbilityClientConfig.HudDisplay.NEVER) {
+            widgetVisible = false;
+        } else {
+            widgetVisible = isContextuallyVisible(player, abilityData, ability);
+        }
+        boolean showBareIcon = !widgetVisible && displayMode == AbilityClientConfig.HudDisplay.MINIMIZE && ability != null;
+        int stackCursor;
+        if (ability != null && (widgetVisible || showBareIcon)) {
+            stackCursor = topSide ? cellY + CELL_SIZE + 4 : cellY - 4;
+        } else {
+            stackCursor = topSide ? MARGIN : guiGraphics.guiHeight() - MARGIN;
+        }
+        renderReadyNotices(guiGraphics, minecraft, stackCursor, rightSide, topSide);
+        if (!widgetVisible) {
+            if (showBareIcon) {
                 renderIconCell(guiGraphics, minecraft, ability, cellX, cellY);
                 renderCooldownShade(guiGraphics, abilityData.getCooldown(ability), cellX, cellY);
             }
             return;
         }
-        int stackCursor;
-        if (ability != null) {
-            stackCursor = topSide ? cellY + CELL_SIZE + 4 : cellY - 4;
-        } else {
-            stackCursor = topSide ? MARGIN : guiGraphics.guiHeight() - MARGIN;
-        }
-        stackCursor = renderReadyNotices(guiGraphics, minecraft, stackCursor, rightSide, topSide);
-        renderEffects(guiGraphics, minecraft, abilityData, stackCursor, rightSide, topSide);
+        int effectsCursor = renderReadyNoticesOffset(minecraft, stackCursor, topSide);
+        renderEffects(guiGraphics, minecraft, abilityData, effectsCursor, rightSide, topSide);
         if (ability != null) {
             renderSelectedCell(guiGraphics, minecraft, abilityData, ability, cellX, cellY, rightSide);
         }
+    }
+
+    private int renderReadyNoticesOffset(Minecraft minecraft, int stackCursor, boolean topSide) {
+        int noticeHeight = AbilityNotifications.readyNotices().size() * (minecraft.font.lineHeight + 2);
+        return topSide ? stackCursor + noticeHeight : stackCursor - noticeHeight;
     }
 
     private boolean isContextuallyVisible(LocalPlayer player, AbilityData abilityData, ActiveAbility selected) {
@@ -165,9 +178,8 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
         drawAligned(guiGraphics, minecraft,
                 AbilityIcons.nameWithLevel(ability, abilityData.getEffectiveLevel(ability)), 0, TEXT_PRIMARY, rightSide);
         if (cooldown.isPresent()) {
-            String statusLine = requirementsText.isEmpty() ? cooldownText(cooldown.get())
-                    : cooldownText(cooldown.get()) + " " + requirementsText;
-            drawAligned(guiGraphics, minecraft, statusLine, STATUS_LINE_OFFSET, TEXT_MUTED, rightSide);
+            drawAligned(guiGraphics, minecraft, statusLine(cooldownText(cooldown.get()), requirementsText),
+                    STATUS_LINE_OFFSET, TEXT_MUTED, rightSide);
         } else if (!requirementsText.isEmpty()) {
             drawAligned(guiGraphics, minecraft, requirementsText, STATUS_LINE_OFFSET, TEXT_MUTED, rightSide);
         } else {
@@ -197,13 +209,25 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
         float damageRequirement = AbilityConfigs.damageTakenRequirement(ability, level);
         int kills = Math.min(progress.get().getKills(), killRequirement);
         int damage = (int) Math.min(progress.get().getDamageTaken(), damageRequirement);
-        long key = (long) kills << 20 | damage;
+        long key = (long) AbilityConfigs.generation() << 52 | (long) level << 40 | (long) kills << 20 | damage;
         if (ability != lastRequirementAbility || key != lastRequirementKey) {
             lastRequirementAbility = ability;
             lastRequirementKey = key;
             lastRequirementText = AbilityIcons.requirementFragment(progress.get(), killRequirement, damageRequirement);
         }
         return lastRequirementText;
+    }
+
+    private String statusLine(String cooldownPart, String requirementsPart) {
+        if (requirementsPart.isEmpty()) {
+            return cooldownPart;
+        }
+        if (cooldownPart != lastStatusCooldownPart || requirementsPart != lastStatusRequirementsPart) {
+            lastStatusCooldownPart = cooldownPart;
+            lastStatusRequirementsPart = requirementsPart;
+            lastStatusLine = cooldownPart + " " + requirementsPart;
+        }
+        return lastStatusLine;
     }
 
     private String cooldownText(Cooldown cooldown) {

@@ -36,6 +36,7 @@ public final class AbilityWheelScreen extends Screen {
     private static final float[] HOVERED_COLOR = {0.18f, 0.72f, 0.63f, 0.55f};
     private static final float[] SELECTED_RING_COLOR = {0.31f, 0.78f, 0.71f, 0.90f};
     private static final float[] HUB_COLOR = {0.04f, 0.04f, 0.07f, 0.70f};
+    private static final Component NO_ABILITIES = Component.translatable("hud.player_abilities.no_abilities");
 
     private static int pageIndex;
 
@@ -210,7 +211,7 @@ public final class AbilityWheelScreen extends Screen {
         int sectorCount = pageAbilities.size();
         if (sectorCount == 0) {
             guiGraphics.drawCenteredString(minecraft.font,
-                    Component.translatable("hud.player_abilities.no_abilities"),
+                    NO_ABILITIES,
                     (int) centerX, (int) (centerY - OUTER_RADIUS - 16), 0xA0A0B0);
             return;
         }

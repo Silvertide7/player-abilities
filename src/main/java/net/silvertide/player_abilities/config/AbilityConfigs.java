@@ -11,9 +11,11 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.OnDatapackSyncEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.Ability;
+import net.silvertide.player_abilities.api.AbilityAPI;
 import net.silvertide.player_abilities.api.AbilityRegistry;
 import net.silvertide.player_abilities.api.AttributeGrant;
 import net.silvertide.player_abilities.api.EffectGrant;
@@ -26,6 +28,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @EventBusSubscriber(modid = PlayerAbilities.MOD_ID)
 public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
@@ -33,6 +37,11 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
     private static final AbilityConfigs INSTANCE = new AbilityConfigs();
 
     private static volatile Map<Ability, AbilityConfig> configs = Map.of();
+    private static volatile int generation;
+    private static volatile Set<Ability> pendingNewlyDisabled = Set.of();
+    private static volatile Set<Ability> pendingNewlyEnabled = Set.of();
+    @org.jetbrains.annotations.Nullable
+    private static Set<Ability> lastServerDisabled;
 
     private AbilityConfigs() {
         super(new Gson(), DATAPACK_DIRECTORY);
@@ -52,7 +61,43 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
                             "Skipping malformed ability_config for {}: {}", abilityId, error))
                     .ifPresent(config -> parsed.put(ability, config));
         });
+        Set<Ability> nowDisabled = disabledAbilities(parsed);
+        Set<Ability> previouslyDisabled = lastServerDisabled;
+        if (previouslyDisabled == null) {
+            pendingNewlyDisabled = Set.of();
+            pendingNewlyEnabled = Set.of();
+        } else {
+            pendingNewlyDisabled = nowDisabled.stream()
+                    .filter(ability -> !previouslyDisabled.contains(ability)).collect(Collectors.toSet());
+            pendingNewlyEnabled = previouslyDisabled.stream()
+                    .filter(ability -> !nowDisabled.contains(ability)).collect(Collectors.toSet());
+        }
+        lastServerDisabled = nowDisabled;
         configs = Map.copyOf(parsed);
+        generation++;
+    }
+
+    @SubscribeEvent
+    public static void onServerStopped(ServerStoppedEvent event) {
+        lastServerDisabled = null;
+        pendingNewlyDisabled = Set.of();
+        pendingNewlyEnabled = Set.of();
+    }
+
+    public static int generation() {
+        return generation;
+    }
+
+    private static Set<Ability> disabledAbilities(Map<Ability, AbilityConfig> configMap) {
+        return configMap.entrySet().stream()
+                .filter(entry -> !entry.getValue().enabled().orElse(true))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
+    }
+
+    public static boolean isEnabled(Ability ability) {
+        AbilityConfig config = configs.get(ability);
+        return config == null || config.enabled().orElse(true);
     }
 
     @SubscribeEvent
@@ -64,6 +109,15 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
     public static void onDatapackSync(OnDatapackSyncEvent event) {
         SyncAbilityConfigsPayload payload = buildSyncPayload();
         event.getRelevantPlayers().forEach(player -> PacketDistributor.sendToPlayer(player, payload));
+        Set<Ability> newlyDisabled = pendingNewlyDisabled;
+        Set<Ability> newlyEnabled = pendingNewlyEnabled;
+        pendingNewlyDisabled = Set.of();
+        pendingNewlyEnabled = Set.of();
+        if (newlyDisabled.isEmpty() && newlyEnabled.isEmpty()) {
+            return;
+        }
+        event.getRelevantPlayers().forEach(player ->
+                AbilityAPI.applyEnabledTransitions(player, newlyDisabled, newlyEnabled));
     }
 
     private static SyncAbilityConfigsPayload buildSyncPayload() {
@@ -81,6 +135,7 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
             }
         });
         configs = Map.copyOf(resolved);
+        generation++;
     }
 
     public static Map<Ability, AbilityConfig> all() {
