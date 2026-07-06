@@ -26,8 +26,8 @@ public final class ClientAbilityInput {
             return;
         }
         AbilityData abilityData = player.getData(AbilityAttachments.ABILITY_DATA);
-        while (AbilityKeyMappings.CAST.consumeClick()) {
-            AbilityClientAPI.cast();
+        while (AbilityKeyMappings.USE.consumeClick()) {
+            AbilityClientAPI.use();
         }
         while (AbilityKeyMappings.CYCLE.consumeClick()) {
             selectNext(abilityData);

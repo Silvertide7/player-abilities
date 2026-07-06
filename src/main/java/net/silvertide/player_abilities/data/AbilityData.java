@@ -54,7 +54,7 @@ public class AbilityData {
     @Nullable
     private ActiveAbility selected;
     @Nullable
-    private ActiveCast activeCast;
+    private ActiveUse activeUse;
 
     private static AbilityData fromSerialized(Map<ResourceLocation, Map<ResourceLocation, Integer>> grantLevelsBySource,
                                               Map<ResourceLocation, Cooldown> cooldownsByAbilityId,
@@ -254,36 +254,36 @@ public class AbilityData {
                 AbilityConfigs.damageTakenRequirement(ability, level));
     }
 
-    public Optional<ActiveCast> getActiveCast() {
-        return Optional.ofNullable(activeCast);
+    public Optional<ActiveUse> getActiveUse() {
+        return Optional.ofNullable(activeUse);
     }
 
-    public void startCast(ActiveAbility ability, int level, int totalTicks, @Nullable Vec3 startPosition, int hurtTimeBaseline) {
-        activeCast = new ActiveCast(ability, level, totalTicks, startPosition);
-        activeCast.setLastHurtTime(hurtTimeBaseline);
+    public void startUse(ActiveAbility ability, int level, int totalTicks, @Nullable Vec3 startPosition, int hurtTimeBaseline) {
+        activeUse = new ActiveUse(ability, level, totalTicks, startPosition);
+        activeUse.setLastHurtTime(hurtTimeBaseline);
     }
 
-    public void markCastCompleting() {
-        if (activeCast != null) {
-            activeCast.markCompleting();
+    public void markUseCompleting() {
+        if (activeUse != null) {
+            activeUse.markCompleting();
         }
     }
 
-    public void incrementCastElapsed() {
-        if (activeCast != null) {
-            activeCast.incrementElapsed();
+    public void incrementUseElapsed() {
+        if (activeUse != null) {
+            activeUse.incrementElapsed();
         }
     }
 
-    public void recordCastHurtBaseline(int hurtTime) {
-        if (activeCast != null) {
-            activeCast.setLastHurtTime(hurtTime);
+    public void recordUseHurtBaseline(int hurtTime) {
+        if (activeUse != null) {
+            activeUse.setLastHurtTime(hurtTime);
         }
     }
 
-    public void setCastData(@Nullable Object castData) {
-        if (activeCast != null) {
-            activeCast.setCastData(castData);
+    public void setUseData(@Nullable Object useData) {
+        if (activeUse != null) {
+            activeUse.setUseData(useData);
         }
     }
 
@@ -302,8 +302,8 @@ public class AbilityData {
         effect.decrementRemaining();
     }
 
-    public void clearCast() {
-        activeCast = null;
+    public void clearUse() {
+        activeUse = null;
     }
 
     public boolean isOnCooldown(GatedAbility ability) {

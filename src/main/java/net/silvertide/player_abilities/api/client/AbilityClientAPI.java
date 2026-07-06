@@ -6,7 +6,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.silvertide.player_abilities.api.ActiveAbility;
 import net.silvertide.player_abilities.api.PassiveAbility;
 import net.silvertide.player_abilities.data.AbilityAttachments;
-import net.silvertide.player_abilities.network.CastAbilityPayload;
+import net.silvertide.player_abilities.network.UseAbilityPayload;
 import net.silvertide.player_abilities.network.SelectAbilityPayload;
 import net.silvertide.player_abilities.network.TogglePassivePayload;
 
@@ -23,8 +23,8 @@ public final class AbilityClientAPI {
         PacketDistributor.sendToServer(new SelectAbilityPayload(ability.getId()));
     }
 
-    public static void cast() {
-        PacketDistributor.sendToServer(CastAbilityPayload.INSTANCE);
+    public static void use() {
+        PacketDistributor.sendToServer(UseAbilityPayload.INSTANCE);
     }
 
     public static void togglePassive(PassiveAbility passive) {

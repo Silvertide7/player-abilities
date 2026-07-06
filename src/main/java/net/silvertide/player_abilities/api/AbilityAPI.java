@@ -10,7 +10,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.common.NeoForge;
 import net.silvertide.player_abilities.PlayerAbilities;
-import net.silvertide.player_abilities.api.event.AbilityCastInterruptedEvent;
+import net.silvertide.player_abilities.api.event.AbilityInterruptedEvent;
 import net.silvertide.player_abilities.api.event.AbilityGrantedEvent;
 import net.silvertide.player_abilities.api.event.AbilityPerformEvent;
 import net.silvertide.player_abilities.api.event.AbilityPerformedEvent;
@@ -18,7 +18,7 @@ import net.silvertide.player_abilities.api.event.AbilityRevokedEvent;
 import net.silvertide.player_abilities.config.AbilityConfigs;
 import net.silvertide.player_abilities.data.AbilityAttachments;
 import net.silvertide.player_abilities.data.AbilityData;
-import net.silvertide.player_abilities.data.ActiveCast;
+import net.silvertide.player_abilities.data.ActiveUse;
 import net.silvertide.player_abilities.data.ActiveEffect;
 import net.silvertide.player_abilities.data.RequirementProgress;
 import net.silvertide.player_abilities.network.AbilitySync;
@@ -33,7 +33,7 @@ import java.util.function.Consumer;
 
 public final class AbilityAPI {
     public static final int MIN_LEVEL = 1;
-    private static final double STATIONARY_CAST_MAX_DRIFT_SQ = 0.25;
+    private static final double STATIONARY_USE_MAX_DRIFT_SQ = 0.25;
 
     private AbilityAPI() {
     }
@@ -91,8 +91,8 @@ public final class AbilityAPI {
             }
         }
         if (ability instanceof ActiveAbility active) {
-            if (abilityData.getActiveCast().filter(cast -> cast.getAbility().equals(active)).isPresent()) {
-                cancelCast(player);
+            if (abilityData.getActiveUse().filter(use -> use.getAbility().equals(active)).isPresent()) {
+                cancelUse(player);
             }
             if (effectiveAfter == 0 && abilityData.getSelected().filter(active::equals).isPresent()) {
                 abilityData.setSelected(null);
@@ -111,14 +111,14 @@ public final class AbilityAPI {
         AbilitySync.syncAbilities(player);
     }
 
-    public static boolean cast(ServerPlayer player) {
+    public static boolean use(ServerPlayer player) {
         AbilityData abilityData = getData(player);
-        Optional<ActiveCast> currentCast = abilityData.getActiveCast();
-        if (currentCast.isPresent()) {
-            if (currentCast.get().getAbility().getUseType() == AbilityUseType.CHANNELED) {
-                finishCast(player);
+        Optional<ActiveUse> currentUse = abilityData.getActiveUse();
+        if (currentUse.isPresent()) {
+            if (currentUse.get().getAbility().getUseType() == AbilityUseType.CHANNELED) {
+                finishUse(player);
             } else {
-                cancelCast(player);
+                cancelUse(player);
             }
             return false;
         }
@@ -147,10 +147,10 @@ public final class AbilityAPI {
             player.displayClientMessage(unmetRequirementMessage(ability, level, pendingRequirements.get()), true);
             return false;
         }
-        if (!ability.canCast(player, level)) {
-            Component failureMessage = ability.getCastFailureMessage(player, level);
+        if (!ability.canUse(player, level)) {
+            Component failureMessage = ability.getUseFailureMessage(player, level);
             player.displayClientMessage(failureMessage != null ? failureMessage
-                    : Component.translatable("message.player_abilities.cannot_cast", abilityName), true);
+                    : Component.translatable("message.player_abilities.cannot_use", abilityName), true);
             return false;
         }
         if (NeoForge.EVENT_BUS.post(new AbilityPerformEvent(player, ability, level)).isCanceled()) {
@@ -160,7 +160,7 @@ public final class AbilityAPI {
             return false;
         }
         if (ability.getUseType() == AbilityUseType.INSTANT) {
-            ability.onCast(player, level);
+            ability.onUse(player, level);
             applyDeclaredEffects(player, ability, level);
             if (!abilityData.isOnCooldown(ability)) {
                 applyCompletionCooldown(player, abilityData, ability, level);
@@ -169,79 +169,79 @@ public final class AbilityAPI {
             NeoForge.EVENT_BUS.post(new AbilityPerformedEvent(player, ability, level));
             return true;
         }
-        int castTicks = AbilityConfigs.castTicks(ability, level);
-        ability.onCastStart(player, level);
-        abilityData.startCast(ability, level, castTicks, player.position(), player.hurtTime);
-        AbilitySync.syncCastState(player, ability, level, castTicks);
-        if (castTicks <= 0) {
-            finishCast(player);
+        int useTicks = AbilityConfigs.useTicks(ability, level);
+        ability.onUseStart(player, level);
+        abilityData.startUse(ability, level, useTicks, player.position(), player.hurtTime);
+        AbilitySync.syncUseState(player, ability, level, useTicks);
+        if (useTicks <= 0) {
+            finishUse(player);
         }
         return true;
     }
 
     public static void serverTick(ServerPlayer player) {
         AbilityData abilityData = getData(player);
-        tickActiveCast(player, abilityData);
+        tickActiveUse(player, abilityData);
         tickEffects(player, abilityData);
     }
 
-    private static void tickActiveCast(ServerPlayer player, AbilityData abilityData) {
-        Optional<ActiveCast> activeCast = abilityData.getActiveCast();
-        if (activeCast.isEmpty()) {
+    private static void tickActiveUse(ServerPlayer player, AbilityData abilityData) {
+        Optional<ActiveUse> activeUse = abilityData.getActiveUse();
+        if (activeUse.isEmpty()) {
             return;
         }
-        ActiveCast cast = activeCast.get();
-        ActiveAbility ability = cast.getAbility();
+        ActiveUse use = activeUse.get();
+        ActiveAbility ability = use.getAbility();
         if (ability.isInterruptedByDamage()) {
-            if (player.hurtTime > cast.getLastHurtTime()) {
-                cancelCast(player);
+            if (player.hurtTime > use.getLastHurtTime()) {
+                cancelUse(player);
                 return;
             }
-            abilityData.recordCastHurtBaseline(player.hurtTime);
+            abilityData.recordUseHurtBaseline(player.hurtTime);
         }
-        if (ability.requiresStationary() && cast.getStartPosition() != null
-                && player.position().distanceToSqr(cast.getStartPosition()) > STATIONARY_CAST_MAX_DRIFT_SQ) {
-            cancelCast(player);
+        if (ability.requiresStationary() && use.getStartPosition() != null
+                && player.position().distanceToSqr(use.getStartPosition()) > STATIONARY_USE_MAX_DRIFT_SQ) {
+            cancelUse(player);
             return;
         }
-        abilityData.incrementCastElapsed();
-        ability.onCastTick(player, cast.getLevel(), cast.getElapsedTicks());
-        if (abilityData.getActiveCast().filter(current -> current == cast && !current.isCompleting()).isEmpty()) {
+        abilityData.incrementUseElapsed();
+        ability.onUseTick(player, use.getLevel(), use.getElapsedTicks());
+        if (abilityData.getActiveUse().filter(current -> current == use && !current.isCompleting()).isEmpty()) {
             return;
         }
-        if (cast.getElapsedTicks() >= cast.getTotalTicks()) {
-            finishCast(player);
+        if (use.getElapsedTicks() >= use.getTotalTicks()) {
+            finishUse(player);
         }
     }
 
-    public static void finishCast(ServerPlayer player) {
-        completeCast(player, false);
+    public static void finishUse(ServerPlayer player) {
+        completeUse(player, false);
     }
 
-    public static void cancelCast(ServerPlayer player) {
-        completeCast(player, true);
+    public static void cancelUse(ServerPlayer player) {
+        completeUse(player, true);
     }
 
-    private static void completeCast(ServerPlayer player, boolean cancelled) {
+    private static void completeUse(ServerPlayer player, boolean cancelled) {
         AbilityData abilityData = getData(player);
-        Optional<ActiveCast> activeCast = abilityData.getActiveCast();
-        if (activeCast.isEmpty() || activeCast.get().isCompleting()) {
+        Optional<ActiveUse> activeUse = abilityData.getActiveUse();
+        if (activeUse.isEmpty() || activeUse.get().isCompleting()) {
             return;
         }
-        ActiveCast cast = activeCast.get();
-        abilityData.markCastCompleting();
-        cast.getAbility().onCastComplete(player, cast.getLevel(), cancelled);
-        abilityData.clearCast();
-        AbilitySync.syncCastState(player, null, 0, 0);
+        ActiveUse use = activeUse.get();
+        abilityData.markUseCompleting();
+        use.getAbility().onUseComplete(player, use.getLevel(), cancelled);
+        abilityData.clearUse();
+        AbilitySync.syncUseState(player, null, 0, 0);
         if (cancelled) {
-            NeoForge.EVENT_BUS.post(new AbilityCastInterruptedEvent(player, cast.getAbility(), cast.getLevel()));
+            NeoForge.EVENT_BUS.post(new AbilityInterruptedEvent(player, use.getAbility(), use.getLevel()));
         } else {
-            applyDeclaredEffects(player, cast.getAbility(), cast.getLevel());
-            if (!abilityData.isOnCooldown(cast.getAbility())) {
-                applyCompletionCooldown(player, abilityData, cast.getAbility(), cast.getLevel());
+            applyDeclaredEffects(player, use.getAbility(), use.getLevel());
+            if (!abilityData.isOnCooldown(use.getAbility())) {
+                applyCompletionCooldown(player, abilityData, use.getAbility(), use.getLevel());
             }
-            resetRequirementProgress(player, abilityData, cast.getAbility(), cast.getLevel());
-            NeoForge.EVENT_BUS.post(new AbilityPerformedEvent(player, cast.getAbility(), cast.getLevel()));
+            resetRequirementProgress(player, abilityData, use.getAbility(), use.getLevel());
+            NeoForge.EVENT_BUS.post(new AbilityPerformedEvent(player, use.getAbility(), use.getLevel()));
         }
     }
 
@@ -527,16 +527,16 @@ public final class AbilityAPI {
     }
 
     @Nullable
-    public static Object getCastData(ServerPlayer player) {
-        return getData(player).getActiveCast().map(ActiveCast::getCastData).orElse(null);
+    public static Object getUseData(ServerPlayer player) {
+        return getData(player).getActiveUse().map(ActiveUse::getUseData).orElse(null);
     }
 
-    public static void setCastData(ServerPlayer player, @Nullable Object castData) {
-        getData(player).setCastData(castData);
+    public static void setUseData(ServerPlayer player, @Nullable Object useData) {
+        getData(player).setUseData(useData);
     }
 
-    public static Optional<ActiveCast> getActiveCast(Player player) {
-        return getData(player).getActiveCast();
+    public static Optional<ActiveUse> getActiveUse(Player player) {
+        return getData(player).getActiveUse();
     }
 
     public static int getLevel(Player player, Ability ability) {

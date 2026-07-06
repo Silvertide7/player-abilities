@@ -11,9 +11,9 @@ public final class ServerPayloadHandlers {
     private ServerPayloadHandlers() {
     }
 
-    public static void handleCast(CastAbilityPayload payload, IPayloadContext context) {
+    public static void handleUse(UseAbilityPayload payload, IPayloadContext context) {
         if (context.player() instanceof ServerPlayer player) {
-            AbilityAPI.cast(player);
+            AbilityAPI.use(player);
         }
     }
 
@@ -35,7 +35,7 @@ public final class ServerPayloadHandlers {
         AbilityRegistry.getActive(payload.abilityId())
                 .filter(abilityData::isGranted)
                 .ifPresentOrElse(active -> {
-                    AbilityAPI.cancelCast(player);
+                    AbilityAPI.cancelUse(player);
                     abilityData.setSelected(active);
                     AbilitySync.syncAbilities(player);
                 }, () -> AbilitySync.syncAbilities(player));

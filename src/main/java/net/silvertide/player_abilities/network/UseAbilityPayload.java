@@ -5,10 +5,10 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.silvertide.player_abilities.PlayerAbilities;
 
-public record CastAbilityPayload() implements CustomPacketPayload {
-    public static final CastAbilityPayload INSTANCE = new CastAbilityPayload();
-    public static final Type<CastAbilityPayload> TYPE = new Type<>(PlayerAbilities.id("cast_ability"));
-    public static final StreamCodec<ByteBuf, CastAbilityPayload> STREAM_CODEC = StreamCodec.unit(INSTANCE);
+public record UseAbilityPayload() implements CustomPacketPayload {
+    public static final UseAbilityPayload INSTANCE = new UseAbilityPayload();
+    public static final Type<UseAbilityPayload> TYPE = new Type<>(PlayerAbilities.id("use_ability"));
+    public static final StreamCodec<ByteBuf, UseAbilityPayload> STREAM_CODEC = StreamCodec.unit(INSTANCE);
 
     @Override
     public Type<? extends CustomPacketPayload> type() {

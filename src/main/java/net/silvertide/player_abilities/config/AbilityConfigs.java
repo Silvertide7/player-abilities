@@ -108,11 +108,11 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
                 : ability.getDamageTakenRequirement(level);
     }
 
-    public static int castTicks(ActiveAbility ability, int level) {
+    public static int useTicks(ActiveAbility ability, int level) {
         AbilityConfig config = configs.get(ability);
-        return config != null && config.castTicks().isPresent()
-                ? config.castTicks().get().resolve(level)
-                : ability.getCastTicks(level);
+        return config != null && config.useTicks().isPresent()
+                ? config.useTicks().get().resolve(level)
+                : ability.getUseTicks(level);
     }
 
     public static int effectDurationTicks(GatedAbility ability, int level) {

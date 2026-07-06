@@ -4,7 +4,7 @@ import net.minecraft.world.phys.Vec3;
 import net.silvertide.player_abilities.api.ActiveAbility;
 import org.jetbrains.annotations.Nullable;
 
-public final class ActiveCast {
+public final class ActiveUse {
     private final ActiveAbility ability;
     private final int level;
     private final int totalTicks;
@@ -14,9 +14,9 @@ public final class ActiveCast {
     private int lastHurtTime;
     private boolean completing;
     @Nullable
-    private Object castData;
+    private Object useData;
 
-    ActiveCast(ActiveAbility ability, int level, int totalTicks, @Nullable Vec3 startPosition) {
+    ActiveUse(ActiveAbility ability, int level, int totalTicks, @Nullable Vec3 startPosition) {
         this.ability = ability;
         this.level = level;
         this.totalTicks = totalTicks;
@@ -65,11 +65,11 @@ public final class ActiveCast {
     }
 
     @Nullable
-    public Object getCastData() {
-        return castData;
+    public Object getUseData() {
+        return useData;
     }
 
-    void setCastData(@Nullable Object castData) {
-        this.castData = castData;
+    void setUseData(@Nullable Object useData) {
+        this.useData = useData;
     }
 }

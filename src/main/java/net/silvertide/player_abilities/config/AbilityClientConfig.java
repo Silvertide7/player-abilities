@@ -40,7 +40,7 @@ public final class AbilityClientConfig {
                         "ALWAYS - always shown in full (icon, name, cooldown/status).",
                         "CONTEXTUAL - full HUD shown for 15s after selecting or using an ability, hidden otherwise.",
                         "MINIMIZE - full HUD for 15s after selecting or using an ability, then just the icon with its cooldown shading.",
-                        "NEVER - hidden (the cast bar still shows while casting).")
+                        "NEVER - hidden (the progress bar still shows while an ability is in use).")
                 .defineEnum("hud_display", HudDisplay.ALWAYS);
         HUD_POSITION = builder
                 .comment("Screen corner for the ability HUD (selected ability, active effects, ready notices).")

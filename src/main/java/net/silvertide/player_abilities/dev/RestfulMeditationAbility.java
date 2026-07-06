@@ -30,7 +30,7 @@ public final class RestfulMeditationAbility extends ActiveAbility {
     }
 
     @Override
-    public int getCastTicks(int level) {
+    public int getUseTicks(int level) {
         return byLevel(level, 200, 160, 100);
     }
 

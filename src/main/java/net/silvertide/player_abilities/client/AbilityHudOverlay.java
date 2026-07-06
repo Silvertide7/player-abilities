@@ -19,7 +19,7 @@ import net.silvertide.player_abilities.config.AbilityClientConfig;
 import net.silvertide.player_abilities.config.AbilityConfigs;
 import net.silvertide.player_abilities.data.AbilityAttachments;
 import net.silvertide.player_abilities.data.AbilityData;
-import net.silvertide.player_abilities.data.ActiveCast;
+import net.silvertide.player_abilities.data.ActiveUse;
 import net.silvertide.player_abilities.data.ActiveEffect;
 import net.silvertide.player_abilities.data.RequirementProgress;
 
@@ -33,14 +33,14 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
     private static final int MARGIN = 4;
     private static final int CELL_SIZE = 22;
     private static final int ICON_SIZE = 20;
-    private static final int CAST_BAR_WIDTH = 110;
-    private static final int CAST_BAR_HEIGHT = 11;
+    private static final int USE_BAR_WIDTH = 110;
+    private static final int USE_BAR_HEIGHT = 11;
     private static final int CELL_BACKGROUND = 0x90101018;
     private static final int CELL_BORDER = 0xB04A4A5A;
     private static final int COOLDOWN_OVERLAY = 0xC0202028;
     private static final int CONTEXTUAL_TICKS = 300;
-    private static final int CAST_BAR_BACKGROUND = 0x90101018;
-    private static final int CAST_BAR_FILL = 0xE050C8B4;
+    private static final int USE_BAR_BACKGROUND = 0x90101018;
+    private static final int USE_BAR_FILL = 0xE050C8B4;
     private static final int TEXT_PRIMARY = 0xFFFFFF;
     private static final int TEXT_MUTED = 0xA0A0B0;
     private static final float TEXT_SCALE = 0.8f;
@@ -53,8 +53,8 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
     private final Map<Ability, EffectLine> effectLineCache = new HashMap<>();
     private int lastCooldownHalfSeconds = -1;
     private String lastCooldownText = "";
-    private int lastCastHalfSeconds = -1;
-    private String lastCastText = "";
+    private int lastUseHalfSeconds = -1;
+    private String lastUseText = "";
     private Ability lastRequirementAbility;
     private long lastRequirementKey = -1;
     private String lastRequirementText = "";
@@ -83,7 +83,7 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
         AbilityData abilityData = player.getData(AbilityAttachments.ABILITY_DATA);
         ActiveAbility ability = abilityData.getSelected().orElse(null);
 
-        abilityData.getActiveCast().ifPresent(cast -> renderCastBar(guiGraphics, minecraft, cast));
+        abilityData.getActiveUse().ifPresent(use -> renderUseBar(guiGraphics, minecraft, use));
         renderNotifications(guiGraphics, minecraft);
 
         AbilityClientConfig.HudDisplay displayMode = AbilityClientConfig.HUD_DISPLAY.get();
@@ -125,7 +125,7 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
         }
         if (player.tickCount != lastContextualTick) {
             lastContextualTick = player.tickCount;
-            boolean activity = selected != lastContextualSelected || abilityData.getActiveCast().isPresent();
+            boolean activity = selected != lastContextualSelected || abilityData.getActiveUse().isPresent();
             lastContextualSelected = selected;
             if (activity) {
                 contextualTicksRemaining = CONTEXTUAL_TICKS;
@@ -237,29 +237,29 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
         return stackCursor;
     }
 
-    private void renderCastBar(GuiGraphics guiGraphics, Minecraft minecraft, ActiveCast cast) {
-        int totalTicks = cast.getTotalTicks();
+    private void renderUseBar(GuiGraphics guiGraphics, Minecraft minecraft, ActiveUse use) {
+        int totalTicks = use.getTotalTicks();
         if (totalTicks <= 0) {
             return;
         }
-        float progress = Math.min(1.0f, (float) cast.getElapsedTicks() / totalTicks);
-        int remainingTicks = Math.max(0, totalTicks - cast.getElapsedTicks());
+        float progress = Math.min(1.0f, (float) use.getElapsedTicks() / totalTicks);
+        int remainingTicks = Math.max(0, totalTicks - use.getElapsedTicks());
         int centerX = guiGraphics.guiWidth() / 2;
-        int barX = centerX - CAST_BAR_WIDTH / 2;
+        int barX = centerX - USE_BAR_WIDTH / 2;
         int barY = guiGraphics.guiHeight() / 2 + guiGraphics.guiHeight() / 8;
         guiGraphics.drawCenteredString(minecraft.font,
-                AbilityIcons.nameWithLevel(cast.getAbility(), cast.getLevel()),
+                AbilityIcons.nameWithLevel(use.getAbility(), use.getLevel()),
                 centerX, barY - minecraft.font.lineHeight - 3, TEXT_PRIMARY);
-        guiGraphics.fill(barX - 1, barY - 1, barX + CAST_BAR_WIDTH + 1, barY + CAST_BAR_HEIGHT + 1, CELL_BORDER);
-        guiGraphics.fill(barX, barY, barX + CAST_BAR_WIDTH, barY + CAST_BAR_HEIGHT, CAST_BAR_BACKGROUND);
-        guiGraphics.fill(barX, barY, barX + Mth.ceil(CAST_BAR_WIDTH * progress), barY + CAST_BAR_HEIGHT, CAST_BAR_FILL);
-        int castHalfSeconds = remainingTicks / 2;
-        if (castHalfSeconds != lastCastHalfSeconds) {
-            lastCastHalfSeconds = castHalfSeconds;
-            lastCastText = String.format(Locale.ROOT, "%.1fs", remainingTicks / 20.0f);
+        guiGraphics.fill(barX - 1, barY - 1, barX + USE_BAR_WIDTH + 1, barY + USE_BAR_HEIGHT + 1, CELL_BORDER);
+        guiGraphics.fill(barX, barY, barX + USE_BAR_WIDTH, barY + USE_BAR_HEIGHT, USE_BAR_BACKGROUND);
+        guiGraphics.fill(barX, barY, barX + Mth.ceil(USE_BAR_WIDTH * progress), barY + USE_BAR_HEIGHT, USE_BAR_FILL);
+        int useHalfSeconds = remainingTicks / 2;
+        if (useHalfSeconds != lastUseHalfSeconds) {
+            lastUseHalfSeconds = useHalfSeconds;
+            lastUseText = String.format(Locale.ROOT, "%.1fs", remainingTicks / 20.0f);
         }
-        guiGraphics.drawCenteredString(minecraft.font, lastCastText, centerX,
-                barY + (CAST_BAR_HEIGHT - minecraft.font.lineHeight) / 2 + 1, TEXT_PRIMARY);
+        guiGraphics.drawCenteredString(minecraft.font, lastUseText, centerX,
+                barY + (USE_BAR_HEIGHT - minecraft.font.lineHeight) / 2 + 1, TEXT_PRIMARY);
     }
 
     private void renderEffects(GuiGraphics guiGraphics, Minecraft minecraft, AbilityData abilityData,

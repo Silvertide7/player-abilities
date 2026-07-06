@@ -81,13 +81,13 @@ public final class ClientPayloadHandlers {
         });
     }
 
-    public static void handleSyncCastState(SyncCastStatePayload payload, IPayloadContext context) {
+    public static void handleSyncUseState(SyncUseStatePayload payload, IPayloadContext context) {
         var abilityData = context.player().getData(AbilityAttachments.ABILITY_DATA);
-        Optional<ActiveAbility> castingAbility = payload.castingAbilityId().flatMap(AbilityRegistry::getActive);
-        if (castingAbility.isPresent()) {
-            abilityData.startCast(castingAbility.get(), payload.level(), payload.totalTicks(), null, 0);
+        Optional<ActiveAbility> usingAbility = payload.usingAbilityId().flatMap(AbilityRegistry::getActive);
+        if (usingAbility.isPresent()) {
+            abilityData.startUse(usingAbility.get(), payload.level(), payload.totalTicks(), null, 0);
         } else {
-            abilityData.clearCast();
+            abilityData.clearUse();
         }
     }
 }

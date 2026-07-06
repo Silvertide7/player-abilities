@@ -7,24 +7,24 @@ import org.jetbrains.annotations.Nullable;
 public abstract class ActiveAbility extends GatedAbility {
     public abstract AbilityUseType getUseType();
 
-    public int getCastTicks(int level) {
+    public int getUseTicks(int level) {
         return 0;
     }
 
-    public boolean canCast(ServerPlayer player, int level) {
+    public boolean canUse(ServerPlayer player, int level) {
         return true;
     }
 
-    public void onCast(ServerPlayer player, int level) {
+    public void onUse(ServerPlayer player, int level) {
     }
 
-    public void onCastStart(ServerPlayer player, int level) {
+    public void onUseStart(ServerPlayer player, int level) {
     }
 
-    public void onCastTick(ServerPlayer player, int level, int elapsedTicks) {
+    public void onUseTick(ServerPlayer player, int level, int elapsedTicks) {
     }
 
-    public void onCastComplete(ServerPlayer player, int level, boolean cancelled) {
+    public void onUseComplete(ServerPlayer player, int level, boolean cancelled) {
     }
 
     public boolean isInterruptedByDamage() {
@@ -36,7 +36,7 @@ public abstract class ActiveAbility extends GatedAbility {
     }
 
     @Nullable
-    public Component getCastFailureMessage(ServerPlayer player, int level) {
+    public Component getUseFailureMessage(ServerPlayer player, int level) {
         return null;
     }
 }

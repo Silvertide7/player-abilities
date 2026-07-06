@@ -52,7 +52,7 @@ public final class PlayerLifecycleHandler {
     @SubscribeEvent
     public static void onChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
-            AbilityAPI.cancelCast(serverPlayer);
+            AbilityAPI.cancelUse(serverPlayer);
             AbilitySync.syncAllState(serverPlayer);
         }
     }
@@ -60,7 +60,7 @@ public final class PlayerLifecycleHandler {
     @SubscribeEvent
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
-            AbilityAPI.cancelCast(serverPlayer);
+            AbilityAPI.cancelUse(serverPlayer);
         }
     }
 
@@ -68,7 +68,7 @@ public final class PlayerLifecycleHandler {
     public static void onDeath(LivingDeathEvent event) {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
             AbilityAPI.fireTrigger(PlayerTriggers.DEATH, serverPlayer, event.getSource());
-            AbilityAPI.cancelCast(serverPlayer);
+            AbilityAPI.cancelUse(serverPlayer);
             AbilityAPI.clearEffects(serverPlayer);
         }
         if (event.getSource().getEntity() instanceof ServerPlayer killer) {
@@ -127,7 +127,7 @@ public final class PlayerLifecycleHandler {
         if (player instanceof ServerPlayer serverPlayer) {
             AbilityAPI.serverTick(serverPlayer);
         } else {
-            abilityData.incrementCastElapsed();
+            abilityData.incrementUseElapsed();
             abilityData.tickEffectsClient();
         }
     }

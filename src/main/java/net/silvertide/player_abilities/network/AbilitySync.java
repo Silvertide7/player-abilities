@@ -34,9 +34,9 @@ public final class AbilitySync {
         PacketDistributor.sendToPlayer(player, new SyncCooldownPayload(ability.getId(), cooldown));
     }
 
-    public static void syncCastState(ServerPlayer player, @Nullable ActiveAbility castingAbility, int level, int totalTicks) {
-        PacketDistributor.sendToPlayer(player, new SyncCastStatePayload(
-                Optional.ofNullable(castingAbility).map(Ability::getId), level, totalTicks));
+    public static void syncUseState(ServerPlayer player, @Nullable ActiveAbility usingAbility, int level, int totalTicks) {
+        PacketDistributor.sendToPlayer(player, new SyncUseStatePayload(
+                Optional.ofNullable(usingAbility).map(Ability::getId), level, totalTicks));
     }
 
     public static void syncEffects(ServerPlayer player) {
