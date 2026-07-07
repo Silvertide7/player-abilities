@@ -4,7 +4,7 @@ import net.minecraft.world.phys.Vec3;
 import net.silvertide.player_abilities.api.ActiveAbility;
 import org.jetbrains.annotations.Nullable;
 
-public final class ActiveUse {
+public final class ActiveUse implements net.silvertide.player_abilities.api.AbilityUse {
     private final ActiveAbility ability;
     private final int level;
     private final int totalTicks;

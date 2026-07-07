@@ -21,10 +21,13 @@ public abstract class ActiveAbility extends GatedAbility {
     public void onUseStart(ServerPlayer player, int level) {
     }
 
-    public void onUseTick(ServerPlayer player, int level, int elapsedTicks) {
+    public void onUseTick(ServerPlayer player, int level, int elapsedTicks, int totalTicks) {
     }
 
     public void onUseComplete(ServerPlayer player, int level, boolean cancelled) {
+    }
+
+    public void onUseReleased(ServerPlayer player, int level) {
     }
 
     public boolean isInterruptedByDamage() {

@@ -25,6 +25,7 @@ import net.silvertide.player_abilities.network.AbilitySync;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -136,6 +137,7 @@ public final class AbilityAPI {
             player.displayClientMessage(Component.translatable("message.player_abilities.no_ability_selected"), true);
             return false;
         }
+        abilityData.clearPendingUseData();
         Component abilityName = Component.translatable(ability.getDescriptionId());
         if (abilityData.isOnCooldown(ability)) {
             player.displayClientMessage(Component.translatable("message.player_abilities.on_cooldown", abilityName), true);
@@ -206,7 +208,7 @@ public final class AbilityAPI {
             return;
         }
         abilityData.incrementUseElapsed();
-        ability.onUseTick(player, use.getLevel(), use.getElapsedTicks());
+        ability.onUseTick(player, use.getLevel(), use.getElapsedTicks(), use.getTotalTicks());
         if (abilityData.getActiveUse().filter(current -> current == use && !current.isCompleting()).isEmpty()) {
             return;
         }
@@ -232,6 +234,9 @@ public final class AbilityAPI {
         ActiveUse use = activeUse.get();
         abilityData.markUseCompleting();
         use.getAbility().onUseComplete(player, use.getLevel(), cancelled);
+        if (!cancelled) {
+            use.getAbility().onUseReleased(player, use.getLevel());
+        }
         abilityData.clearUse();
         AbilitySync.syncUseState(player, null, 0, 0);
         if (cancelled) {
@@ -371,8 +376,8 @@ public final class AbilityAPI {
         }
     }
 
-    public static Map<Ability, ActiveEffect> getActiveEffects(Player player) {
-        return getData(player).getActiveEffects();
+    public static Map<Ability, AbilityEffect> getActiveEffects(Player player) {
+        return Collections.unmodifiableMap(getData(player).getActiveEffects());
     }
 
     @Nullable
@@ -579,15 +584,19 @@ public final class AbilityAPI {
 
     @Nullable
     public static Object getUseData(ServerPlayer player) {
-        return getData(player).getActiveUse().map(ActiveUse::getUseData).orElse(null);
+        return getData(player).getUseData();
     }
 
     public static void setUseData(ServerPlayer player, @Nullable Object useData) {
         getData(player).setUseData(useData);
     }
 
-    public static Optional<ActiveUse> getActiveUse(Player player) {
-        return getData(player).getActiveUse();
+    public static Optional<AbilityUse> getActiveUse(Player player) {
+        return getData(player).getActiveUse().map(use -> use);
+    }
+
+    public static double getAbilityPower(ServerPlayer player) {
+        return player.getAttributeValue(AbilityAttributes.ABILITY_POWER);
     }
 
     public static int getLevel(Player player, Ability ability) {

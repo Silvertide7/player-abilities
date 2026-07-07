@@ -1,5 +1,6 @@
 {
   "attribute.player_abilities.ability_cooldown": "Ability Cooldown",
+  "attribute.player_abilities.ability_power": "Ability Power",
   "item.player_abilities.ability_book": "Ability Tome",
   "item.player_abilities.ability_book.named": "Tome: %s",
   "item.player_abilities.ability_book.level": "Level %s",

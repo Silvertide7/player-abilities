@@ -7,7 +7,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import org.jetbrains.annotations.Nullable;
 
-public final class ActiveEffect {
+public final class ActiveEffect implements net.silvertide.player_abilities.api.AbilityEffect {
     public static final Codec<ActiveEffect> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.INT.fieldOf("level").forGetter(ActiveEffect::getLevel),
             Codec.INT.fieldOf("total").forGetter(ActiveEffect::getTotalTicks),

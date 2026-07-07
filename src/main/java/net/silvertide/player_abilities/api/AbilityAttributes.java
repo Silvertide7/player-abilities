@@ -17,6 +17,9 @@ public final class AbilityAttributes {
     public static final DeferredHolder<Attribute, Attribute> ABILITY_COOLDOWN = ATTRIBUTES.register("ability_cooldown",
             () -> new RangedAttribute("attribute.player_abilities.ability_cooldown", 1.0, 0.0, 10.0).setSyncable(true));
 
+    public static final DeferredHolder<Attribute, Attribute> ABILITY_POWER = ATTRIBUTES.register("ability_power",
+            () -> new RangedAttribute("attribute.player_abilities.ability_power", 1.0, 0.0, 10.0).setSyncable(true));
+
     private AbilityAttributes() {
     }
 
@@ -27,5 +30,6 @@ public final class AbilityAttributes {
 
     private static void modifyEntityAttributes(EntityAttributeModificationEvent event) {
         event.add(EntityType.PLAYER, ABILITY_COOLDOWN);
+        event.add(EntityType.PLAYER, ABILITY_POWER);
     }
 }

@@ -62,6 +62,8 @@ public class AbilityData {
     }
     @Nullable
     private ActiveUse activeUse;
+    @Nullable
+    private Object pendingUseData;
 
     private static AbilityData fromSerialized(Map<ResourceLocation, Map<ResourceLocation, Integer>> grantLevelsBySource,
                                               Map<ResourceLocation, Cooldown> cooldownsByAbilityId,
@@ -297,6 +299,19 @@ public class AbilityData {
     public void startUse(ActiveAbility ability, int level, int totalTicks, @Nullable Vec3 startPosition, int hurtTimeBaseline) {
         activeUse = new ActiveUse(ability, level, totalTicks, startPosition);
         activeUse.setLastHurtTime(hurtTimeBaseline);
+        if (pendingUseData != null) {
+            activeUse.setUseData(pendingUseData);
+            pendingUseData = null;
+        }
+    }
+
+    public void clearPendingUseData() {
+        pendingUseData = null;
+    }
+
+    @Nullable
+    public Object getUseData() {
+        return activeUse != null ? activeUse.getUseData() : pendingUseData;
     }
 
     public void markUseCompleting() {
@@ -320,6 +335,8 @@ public class AbilityData {
     public void setUseData(@Nullable Object useData) {
         if (activeUse != null) {
             activeUse.setUseData(useData);
+        } else {
+            pendingUseData = useData;
         }
     }
 
