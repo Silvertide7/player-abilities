@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "artifactory-site",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd /Users/nate/Workspace/personal/artifactory-site && npm run dev -- --port 5199"],
+      "port": 5199
+    }
+  ]
+}

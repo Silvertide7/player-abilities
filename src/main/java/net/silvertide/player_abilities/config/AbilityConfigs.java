@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 
 @EventBusSubscriber(modid = PlayerAbilities.MOD_ID)
 public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
-    public static final String DATAPACK_DIRECTORY = "ability_config";
+    public static final String DATAPACK_DIRECTORY = "player_abilities";
     private static final AbilityConfigs INSTANCE = new AbilityConfigs();
 
     private static volatile Map<Ability, AbilityConfig> configs = Map.of();
@@ -53,12 +53,12 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
         rawEntries.forEach((abilityId, json) -> {
             Ability ability = AbilityRegistry.ABILITIES.get(abilityId);
             if (ability == null) {
-                PlayerAbilities.LOGGER.warn("Skipping ability_config for unknown ability {}", abilityId);
+                PlayerAbilities.LOGGER.warn("Skipping player_abilities config for unknown ability {}", abilityId);
                 return;
             }
             AbilityConfig.CODEC.parse(JsonOps.INSTANCE, json)
                     .resultOrPartial(error -> PlayerAbilities.LOGGER.warn(
-                            "Skipping malformed ability_config for {}: {}", abilityId, error))
+                            "Skipping malformed player_abilities config for {}: {}", abilityId, error))
                     .ifPresent(config -> parsed.put(ability, config));
         });
         Set<Ability> nowDisabled = disabledAbilities(parsed);

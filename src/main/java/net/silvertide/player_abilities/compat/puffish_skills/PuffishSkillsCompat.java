@@ -94,12 +94,12 @@ public final class PuffishSkillsCompat {
     private static boolean hasUnlocked(ServerPlayer player, SkillKey skillKey) {
         Optional<Category> category = SkillsAPI.getCategory(skillKey.category());
         if (category.isEmpty()) {
-            PlayerAbilities.LOGGER.warn("ability_config puffish_grants references unknown Pufferfish category '{}'", skillKey.category());
+            PlayerAbilities.LOGGER.warn("player_abilities puffish_grants references unknown Pufferfish category '{}'", skillKey.category());
             return false;
         }
         Optional<Skill> skill = category.get().getSkill(skillKey.skill());
         if (skill.isEmpty()) {
-            PlayerAbilities.LOGGER.warn("ability_config puffish_grants references unknown Pufferfish skill '{}' in category '{}'",
+            PlayerAbilities.LOGGER.warn("player_abilities puffish_grants references unknown Pufferfish skill '{}' in category '{}'",
                     skillKey.skill(), skillKey.category());
             return false;
         }
