@@ -211,7 +211,7 @@ publishMods {
     discord {
         webhookUrl = providers.environmentVariable("DISCORD_WEBHOOK_URL")
         dryRunWebhookUrl = providers.environmentVariable("DISCORD_WEBHOOK_TEST_URL")
-        username = "Realms of Reverie"
+        username = "Player Abilities"
         style {
             look = "MODERN"
             color = "curseforge"
