@@ -47,7 +47,18 @@ public final class AbilityBookScreen extends Screen {
     private static final Component NO_ABILITIES = Component.translatable("hud.player_abilities.no_abilities");
     private static final Component PASSIVE_ON = Component.translatable("gui.player_abilities.passive_on");
     private static final Component PASSIVE_OFF = Component.translatable("gui.player_abilities.passive_off");
-    private static final int PASSIVE_ON_COLOR = 0xFF66DD66;
+    private static final int TOGGLE_PADDING = 5;
+    private static final int TOGGLE_HOVER_INFLATE = 2;
+    private static final int TOGGLE_ON_BG = 0x66269626;
+    private static final int TOGGLE_ON_BG_HOVER = 0xEE7BE07B;
+    private static final int TOGGLE_ON_BORDER = 0xFF3DA53D;
+    private static final int TOGGLE_ON_BORDER_HOVER = 0xFFC2FFC2;
+    private static final int TOGGLE_OFF_BG = 0x66363640;
+    private static final int TOGGLE_OFF_BG_HOVER = 0xEE72727E;
+    private static final int TOGGLE_OFF_BORDER = 0xFF6A6A78;
+    private static final int TOGGLE_OFF_BORDER_HOVER = 0xFFC8C8D6;
+    private static final int TOGGLE_TEXT_ON = 0xFFFFFFFF;
+    private static final int TOGGLE_TEXT_OFF = 0xFFC0C0C8;
 
     private enum Tab {
         ACTIVE(ActiveAbility.class, "gui.player_abilities.section_active"),
@@ -192,10 +203,11 @@ public final class AbilityBookScreen extends Screen {
         for (Row row : rows) {
             int rowHeight = rowHeight(row);
             if (rowY + rowHeight >= contentTop && rowY <= viewBottom) {
-                renderRow(guiGraphics, row, panelX + PANEL_PADDING, rowY);
-                if (row instanceof Row.Entry entry && mouseX >= panelX && mouseX <= panelX + PANEL_WIDTH
-                        && mouseY >= Math.max(rowY, contentTop) && mouseY < Math.min(rowY + rowHeight, viewBottom)) {
-                    hoveredEntry = entry;
+                boolean rowHovered = row instanceof Row.Entry && mouseX >= panelX && mouseX <= panelX + PANEL_WIDTH
+                        && mouseY >= Math.max(rowY, contentTop) && mouseY < Math.min(rowY + rowHeight, viewBottom);
+                renderRow(guiGraphics, row, panelX + PANEL_PADDING, rowY, rowHovered);
+                if (rowHovered) {
+                    hoveredEntry = (Row.Entry) row;
                 }
             }
             rowY += rowHeight;
@@ -247,27 +259,46 @@ public final class AbilityBookScreen extends Screen {
         return lines;
     }
 
-    private void renderRow(GuiGraphics guiGraphics, Row row, int rowX, int rowY) {
+    private void renderRow(GuiGraphics guiGraphics, Row row, int rowX, int rowY, boolean hovered) {
         if (row instanceof Row.Header header) {
             guiGraphics.drawString(font, header.title(), rowX, rowY + 4, HEADER_COLOR);
             return;
         }
         Row.Entry entry = (Row.Entry) row;
+        int rowRight = rowX + PANEL_WIDTH - PANEL_PADDING * 2;
         AbilityIcons.render(guiGraphics, font, entry.ability(), rowX, rowY, ICON_SIZE);
         int textX = rowX + ICON_SIZE + 6;
         guiGraphics.drawString(font, AbilityIcons.nameWithLevel(entry.ability(), entry.level()), textX, rowY + 4, TEXT_PRIMARY);
         if (entry.ability() instanceof GatedAbility gated) {
             String status = statusText(gated, entry.level());
             if (status.isEmpty()) {
-                guiGraphics.drawString(font, READY, rowX + PANEL_WIDTH - PANEL_PADDING * 2 - font.width(READY), rowY + 4, TEXT_MUTED);
+                guiGraphics.drawString(font, READY, rowRight - font.width(READY), rowY + 4, TEXT_MUTED);
             } else {
-                guiGraphics.drawString(font, status, rowX + PANEL_WIDTH - PANEL_PADDING * 2 - font.width(status), rowY + 4, STATUS_PENDING);
+                guiGraphics.drawString(font, status, rowRight - font.width(status), rowY + 4, STATUS_PENDING);
             }
         } else if (entry.ability() instanceof PassiveAbility passive) {
-            Component state = abilityData.isPassiveDisabled(passive) ? PASSIVE_OFF : PASSIVE_ON;
-            int stateColor = abilityData.isPassiveDisabled(passive) ? TEXT_MUTED : PASSIVE_ON_COLOR;
-            guiGraphics.drawString(font, state, rowX + PANEL_WIDTH - PANEL_PADDING * 2 - font.width(state), rowY + 4, stateColor);
+            renderToggle(guiGraphics, passive, rowRight, rowY, hovered);
         }
+    }
+
+    private void renderToggle(GuiGraphics guiGraphics, PassiveAbility passive, int rowRight, int rowY, boolean hovered) {
+        boolean on = !abilityData.isPassiveDisabled(passive);
+        Component label = on ? PASSIVE_ON : PASSIVE_OFF;
+        int inflate = hovered ? TOGGLE_HOVER_INFLATE : 0;
+        int pillRight = rowRight + inflate;
+        int pillLeft = rowRight - (font.width(label) + TOGGLE_PADDING * 2) - inflate;
+        int pillTop = rowY + 1 - inflate;
+        int pillBottom = rowY + 1 + font.lineHeight + 3 + inflate;
+        int border = on
+                ? (hovered ? TOGGLE_ON_BORDER_HOVER : TOGGLE_ON_BORDER)
+                : (hovered ? TOGGLE_OFF_BORDER_HOVER : TOGGLE_OFF_BORDER);
+        int fill = on
+                ? (hovered ? TOGGLE_ON_BG_HOVER : TOGGLE_ON_BG)
+                : (hovered ? TOGGLE_OFF_BG_HOVER : TOGGLE_OFF_BG);
+        guiGraphics.fill(pillLeft - 1, pillTop - 1, pillRight + 1, pillBottom + 1, border);
+        guiGraphics.fill(pillLeft, pillTop, pillRight, pillBottom, fill);
+        guiGraphics.drawCenteredString(font, label, (pillLeft + pillRight) / 2, rowY + 3,
+                on ? TOGGLE_TEXT_ON : TOGGLE_TEXT_OFF);
     }
 
     private String statusText(GatedAbility ability, int level) {
