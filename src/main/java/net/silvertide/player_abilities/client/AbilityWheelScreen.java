@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public final class AbilityWheelScreen extends Screen {
-    private static final int ABILITIES_PER_PAGE = 8;
+    private static final int ABILITIES_PER_PAGE = 10;
     private static final float INNER_RADIUS = 34.0f;
     private static final float OUTER_RADIUS = 78.0f;
     private static final float HUB_RADIUS = 27.0f;

@@ -129,8 +129,11 @@ configurations {
 }
 
 dependencies {
-    implementation "curse.maven:pmmo-353935:${pmmo_version}"
-    implementation "curse.maven:puffish-skills-835091:${pufferfish_version}"
+    compileOnly "curse.maven:pmmo-353935:${pmmo_version}"
+    localRuntime "curse.maven:pmmo-353935:${pmmo_version}"
+
+    compileOnly "curse.maven:puffish-skills-835091:${pufferfish_version}"
+    localRuntime "curse.maven:puffish-skills-835091:${pufferfish_version}"
 
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
