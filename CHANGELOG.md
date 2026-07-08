@@ -1,3 +1,3 @@
-1.0.1
+1.0.2
 ---
-- Update timers to use hh:mm:ss instead of SSS:ss
+- Fix Modrinth Publish
