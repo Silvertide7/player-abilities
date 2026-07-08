@@ -204,11 +204,11 @@ publishMods {
         serverRequired = true
     }
 
-     modrinth {
-         projectId = "lRpZSeRD"
-         accessToken = providers.environmentVariable("MODRINTH_TOKEN")
-         minecraftVersions.add(minecraft_version)
-     }
+//     modrinth {
+//         projectId = "lRpZSeRD"
+//         accessToken = providers.environmentVariable("MODRINTH_TOKEN")
+//         minecraftVersions.add(minecraft_version)
+//     }
 
     discord {
         webhookUrl = providers.environmentVariable("DISCORD_WEBHOOK_URL")
