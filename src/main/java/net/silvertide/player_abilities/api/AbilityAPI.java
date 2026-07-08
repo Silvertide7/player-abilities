@@ -308,7 +308,8 @@ public final class AbilityAPI {
             activateEffect(player, ability, level, durationTicks);
         }
         for (EffectGrant effectGrant : AbilityConfigs.effectGrants(ability, level)) {
-            player.addEffect(new MobEffectInstance(effectGrant.effect(), effectGrant.durationTicks(), effectGrant.amplifier()));
+            player.addEffect(new MobEffectInstance(effectGrant.effect(), effectGrant.durationTicks(), effectGrant.amplifier(),
+                    false, effectGrant.showParticles(), effectGrant.showIcon()));
         }
     }
 

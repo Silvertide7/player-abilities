@@ -1,3 +1,3 @@
-1.0.2
+1.0.3
 ---
-- Fix Modrinth Publish
+- Update Effect Grant to allow showParticles and showIcon

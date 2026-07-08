@@ -65,17 +65,19 @@ public record AbilityConfig(Optional<Boolean> enabled,
     }
 
     public record EffectGrantConfig(Holder<MobEffect> effect, LeveledValue<Integer> durationTicks,
-                                    LeveledValue<Integer> amplifier) {
+                                    LeveledValue<Integer> amplifier, boolean showParticles, boolean showIcon) {
         private static final LeveledValue<Integer> NO_AMPLIFIER = new LeveledValue<>(List.of(0));
 
         public static final Codec<EffectGrantConfig> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 BuiltInRegistries.MOB_EFFECT.holderByNameCodec().fieldOf("effect").forGetter(EffectGrantConfig::effect),
                 LeveledValue.codec(Codec.INT).fieldOf("duration_ticks").forGetter(EffectGrantConfig::durationTicks),
-                LeveledValue.codec(Codec.INT).optionalFieldOf("amplifier", NO_AMPLIFIER).forGetter(EffectGrantConfig::amplifier)
+                LeveledValue.codec(Codec.INT).optionalFieldOf("amplifier", NO_AMPLIFIER).forGetter(EffectGrantConfig::amplifier),
+                Codec.BOOL.optionalFieldOf("show_particles", true).forGetter(EffectGrantConfig::showParticles),
+                Codec.BOOL.optionalFieldOf("show_icon", true).forGetter(EffectGrantConfig::showIcon)
         ).apply(instance, EffectGrantConfig::new));
 
         public EffectGrant resolve(int level) {
-            return new EffectGrant(effect, durationTicks.resolve(level), amplifier.resolve(level));
+            return new EffectGrant(effect, durationTicks.resolve(level), amplifier.resolve(level), showParticles, showIcon);
         }
     }
 
