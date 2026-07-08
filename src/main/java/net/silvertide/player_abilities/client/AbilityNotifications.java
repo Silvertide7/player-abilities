@@ -16,7 +16,6 @@ import net.silvertide.player_abilities.data.AbilityData;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 
 @EventBusSubscriber(modid = PlayerAbilities.MOD_ID, value = Dist.CLIENT)
 public final class AbilityNotifications {
@@ -59,7 +58,7 @@ public final class AbilityNotifications {
     public static void onTriggeredActivated(GatedAbility ability, int cooldownTicks) {
         Component title = Component.translatable("hud.player_abilities.triggered_activated", AbilityIcons.name(ability));
         Component subtitle = Component.translatable("hud.player_abilities.cooldown_duration",
-                String.format(Locale.ROOT, "%.0f", cooldownTicks / 20.0f));
+                AbilityIcons.formatCooldown(cooldownTicks));
         activatedNotices.add(new Notice(ability, title, subtitle, ACTIVATED_DISPLAY_TICKS));
         if (cooldownTicks > 0 && !awaitingReady.contains(ability)) {
             awaitingReady.add(ability);

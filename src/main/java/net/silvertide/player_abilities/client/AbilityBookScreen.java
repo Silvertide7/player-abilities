@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 public final class AbilityBookScreen extends Screen {
@@ -243,7 +242,7 @@ public final class AbilityBookScreen extends Screen {
             int cooldownTicks = AbilityConfigs.cooldownTicks(gated, level);
             if (cooldownTicks > 0) {
                 lines.add(Component.translatable("gui.player_abilities.tooltip_cooldown",
-                        String.format(Locale.ROOT, "%.1f", cooldownTicks / 20.0f)).withStyle(ChatFormatting.DARK_GRAY).getVisualOrderText());
+                        AbilityIcons.formatCooldown(cooldownTicks)).withStyle(ChatFormatting.DARK_GRAY).getVisualOrderText());
             }
             int killRequirement = AbilityConfigs.killRequirement(gated, level);
             if (killRequirement > 0) {
@@ -312,7 +311,8 @@ public final class AbilityBookScreen extends Screen {
         if (cached == null || cached.key() != key) {
             StringBuilder status = new StringBuilder();
             if (cooldownSeconds > 0) {
-                status.append(cooldownSeconds).append('s');
+                status.append(AbilityIcons.formatCooldown(
+                        abilityData.getCooldown(ability).map(cooldown -> cooldown.remainingTicks()).orElse(0)));
             }
             if (progress != null) {
                 String fragment = AbilityIcons.requirementFragment(progress,

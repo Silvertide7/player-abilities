@@ -1,7 +1,3 @@
-1.0.0
+1.0.1
 ---
-- Full Release
-- Remove test abilities
-- Add enabled / disabled
-- More cleanup for release
-- Created AbilityEffect and AbilityUse abstract classes for the API.
+- Update timers to use hh:mm:ss instead of SSS:ss

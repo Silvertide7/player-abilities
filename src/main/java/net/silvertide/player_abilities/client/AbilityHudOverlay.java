@@ -51,7 +51,7 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
     private static final Component READY = Component.translatable("hud.player_abilities.ready");
 
     private final Map<Ability, EffectLine> effectLineCache = new HashMap<>();
-    private int lastCooldownHalfSeconds = -1;
+    private int lastCooldownSeconds = -1;
     private String lastCooldownText = "";
     private int lastUseHalfSeconds = -1;
     private String lastUseText = "";
@@ -231,10 +231,10 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
     }
 
     private String cooldownText(Cooldown cooldown) {
-        int halfSeconds = cooldown.remainingTicks() / 2;
-        if (halfSeconds != lastCooldownHalfSeconds) {
-            lastCooldownHalfSeconds = halfSeconds;
-            lastCooldownText = String.format(Locale.ROOT, "%.1fs", cooldown.remainingTicks() / 20.0f);
+        int seconds = (cooldown.remainingTicks() + 19) / 20;
+        if (seconds != lastCooldownSeconds) {
+            lastCooldownSeconds = seconds;
+            lastCooldownText = AbilityIcons.formatCooldown(cooldown.remainingTicks());
         }
         return lastCooldownText;
     }

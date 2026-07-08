@@ -132,6 +132,20 @@ public final class AbilityIcons {
         text.append(part);
     }
 
+    public static String formatCooldown(int ticks) {
+        int seconds = (ticks + 19) / 20;
+        if (seconds <= 60) {
+            return seconds + "s";
+        }
+        int minutes = (seconds + 59) / 60;
+        if (minutes < 60) {
+            return minutes + "m";
+        }
+        int hours = minutes / 60;
+        int remainderMinutes = minutes % 60;
+        return remainderMinutes == 0 ? hours + "h" : hours + "h " + remainderMinutes + "m";
+    }
+
     private record LeveledNameKey(Ability ability, int level) {
     }
 }
