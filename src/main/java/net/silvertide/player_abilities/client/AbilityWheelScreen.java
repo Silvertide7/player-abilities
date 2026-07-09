@@ -31,12 +31,19 @@ public final class AbilityWheelScreen extends Screen {
     private static final float SECTOR_GAP_RADIANS = 0.035f;
     private static final float SUBDIVISION_RADIANS = 0.15f;
     private static final int MIN_TICKS_BEFORE_RELEASE_SELECTS = 3;
+    private static final int SCROLL_PAGE_COOLDOWN_TICKS = 4;
     private static final int COOLDOWN_MARKER_COLOR = 0xE0FFCC66;
     private static final float[] SECTOR_COLOR = {0.06f, 0.06f, 0.09f, 0.60f};
     private static final float[] HOVERED_COLOR = {0.18f, 0.72f, 0.63f, 0.55f};
     private static final float[] SELECTED_RING_COLOR = {0.31f, 0.78f, 0.71f, 0.90f};
     private static final float[] HUB_COLOR = {0.04f, 0.04f, 0.07f, 0.70f};
     private static final Component NO_ABILITIES = Component.translatable("hud.player_abilities.no_abilities");
+    private static final float PAGE_ARROW_MARGIN = 16.0f;
+    private static final float PAGE_ARROW_HALF_WIDTH = 5.0f;
+    private static final float PAGE_ARROW_HALF_HEIGHT = 7.0f;
+    private static final float PAGE_ARROW_HITBOX_HALF = 11.0f;
+    private static final float[] PAGE_ARROW_COLOR = {0.63f, 0.66f, 0.69f, 0.85f};
+    private static final float[] PAGE_ARROW_HOVERED_COLOR = {0.18f, 0.72f, 0.63f, 1.0f};
 
     private static int pageIndex;
 
@@ -47,6 +54,7 @@ public final class AbilityWheelScreen extends Screen {
     private String pageIndicator = "";
     private int hoveredIndex = -1;
     private int ticksOpen;
+    private int lastScrollPageTick = -SCROLL_PAGE_COOLDOWN_TICKS;
 
     public AbilityWheelScreen(LocalPlayer player) {
         super(Component.empty());
@@ -112,12 +120,19 @@ public final class AbilityWheelScreen extends Screen {
         float centerX = width / 2.0f;
         float centerY = height / 2.0f;
         List<ActiveAbility> pageAbilities = currentPage();
-        hoveredIndex = computeHoveredIndex(pageAbilities.size(), mouseX - centerX, mouseY - centerY);
+        boolean multiplePages = pageCount() > 1;
+        int hoveredArrow = multiplePages ? hoveredArrowDirection(mouseX, mouseY, centerX, centerY) : 0;
+        hoveredIndex = hoveredArrow != 0 ? -1
+                : computeHoveredIndex(pageAbilities.size(), mouseX - centerX, mouseY - centerY);
         ActiveAbility selected = abilityData.getSelected().orElse(null);
         VertexConsumer buffer = guiGraphics.bufferSource().getBuffer(RenderType.gui());
         Matrix4f pose = guiGraphics.pose().last().pose();
         drawSectors(buffer, pose, centerX, centerY, pageAbilities, selected);
         drawHubDisc(buffer, pose, centerX, centerY);
+        if (multiplePages) {
+            drawPageArrow(buffer, pose, centerX - OUTER_RADIUS - PAGE_ARROW_MARGIN, centerY, false, hoveredArrow < 0);
+            drawPageArrow(buffer, pose, centerX + OUTER_RADIUS + PAGE_ARROW_MARGIN, centerY, true, hoveredArrow > 0);
+        }
         guiGraphics.bufferSource().endBatch(RenderType.gui());
         drawSectorContents(guiGraphics, minecraft, centerX, centerY, pageAbilities, abilityData);
         drawHubContents(guiGraphics, minecraft, centerX, centerY, selected);
@@ -237,18 +252,56 @@ public final class AbilityWheelScreen extends Screen {
         }
     }
 
+    private void changePage(int delta) {
+        pageIndex = Math.floorMod(pageIndex + delta, pageCount());
+        hoveredIndex = -1;
+        updatePageIndicator();
+    }
+
+    private int hoveredArrowDirection(double mouseX, double mouseY, float centerX, float centerY) {
+        if (isInArrow(mouseX, mouseY, centerX - OUTER_RADIUS - PAGE_ARROW_MARGIN, centerY)) {
+            return -1;
+        }
+        if (isInArrow(mouseX, mouseY, centerX + OUTER_RADIUS + PAGE_ARROW_MARGIN, centerY)) {
+            return 1;
+        }
+        return 0;
+    }
+
+    private static boolean isInArrow(double mouseX, double mouseY, float arrowCenterX, float arrowCenterY) {
+        return Math.abs(mouseX - arrowCenterX) <= PAGE_ARROW_HITBOX_HALF
+                && Math.abs(mouseY - arrowCenterY) <= PAGE_ARROW_HITBOX_HALF;
+    }
+
+    private void drawPageArrow(VertexConsumer buffer, Matrix4f pose, float centerX, float centerY,
+                               boolean pointsRight, boolean hovered) {
+        float[] color = hovered ? PAGE_ARROW_HOVERED_COLOR : PAGE_ARROW_COLOR;
+        float baseX = pointsRight ? centerX - PAGE_ARROW_HALF_WIDTH : centerX + PAGE_ARROW_HALF_WIDTH;
+        float tipX = pointsRight ? centerX + PAGE_ARROW_HALF_WIDTH : centerX - PAGE_ARROW_HALF_WIDTH;
+        buffer.addVertex(pose, baseX, centerY - PAGE_ARROW_HALF_HEIGHT, 0).setColor(color[0], color[1], color[2], color[3]);
+        buffer.addVertex(pose, baseX, centerY + PAGE_ARROW_HALF_HEIGHT, 0).setColor(color[0], color[1], color[2], color[3]);
+        buffer.addVertex(pose, tipX, centerY, 0).setColor(color[0], color[1], color[2], color[3]);
+        buffer.addVertex(pose, tipX, centerY, 0).setColor(color[0], color[1], color[2], color[3]);
+    }
+
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (pageCount() > 1) {
-            pageIndex = Math.floorMod(pageIndex + (scrollY < 0 ? 1 : -1), pageCount());
-            hoveredIndex = -1;
-            updatePageIndicator();
+        if (pageCount() > 1 && ticksOpen - lastScrollPageTick >= SCROLL_PAGE_COOLDOWN_TICKS) {
+            changePage(scrollY < 0 ? 1 : -1);
+            lastScrollPageTick = ticksOpen;
         }
         return true;
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && pageCount() > 1) {
+            int arrow = hoveredArrowDirection(mouseX, mouseY, width / 2.0f, height / 2.0f);
+            if (arrow != 0) {
+                changePage(arrow);
+                return true;
+            }
+        }
         if (button == 0) {
             hoveredIndex = computeHoveredIndex(currentPage().size(),
                     (float) (mouseX - width / 2.0), (float) (mouseY - height / 2.0));

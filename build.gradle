@@ -135,6 +135,10 @@ dependencies {
     compileOnly "curse.maven:puffish-skills-835091:${pufferfish_version}"
     localRuntime "curse.maven:puffish-skills-835091:${pufferfish_version}"
 
+    // Dev-only: load the Reverie content pack so there are abilities to test in runClient/runServer.
+    // localRuntime = not published as a dependency. Build the pack first; bump the filename version when the pack changes.
+    localRuntime files("../player_abilities_pack/build/libs/pa_reverie-1.0.0.jar")
+
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
