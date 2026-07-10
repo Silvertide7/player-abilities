@@ -1,3 +1,3 @@
-1.0.4
+1.0.5
 ---
-- Update Effect Grant to allow showParticles and showIcon
+- Debounce ability wheel. Allow creative players to bypass all requirements / cooldowns

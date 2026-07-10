@@ -1,5 +1,6 @@
 package net.silvertide.player_abilities.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
@@ -12,6 +13,7 @@ import net.silvertide.player_abilities.api.ActiveAbility;
 import net.silvertide.player_abilities.api.client.AbilityClientAPI;
 import net.silvertide.player_abilities.data.AbilityAttachments;
 import net.silvertide.player_abilities.data.AbilityData;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 
@@ -19,7 +21,25 @@ import java.util.List;
 public final class ClientAbilityInput {
     private static final Component NO_ABILITIES = Component.translatable("hud.player_abilities.no_abilities");
 
+    private static boolean suppressWheelUntilKeyReleased;
+
     private ClientAbilityInput() {
+    }
+
+    public static void suppressWheelReopenUntilKeyReleased() {
+        suppressWheelUntilKeyReleased = isWheelBindPhysicallyDown();
+    }
+
+    private static boolean isWheelBindPhysicallyDown() {
+        InputConstants.Key key = AbilityKeyMappings.WHEEL.getKey();
+        if (key.equals(InputConstants.UNKNOWN)) {
+            return false;
+        }
+        long window = Minecraft.getInstance().getWindow().getWindow();
+        if (key.getType() == InputConstants.Type.MOUSE) {
+            return GLFW.glfwGetMouseButton(window, key.getValue()) == GLFW.GLFW_PRESS;
+        }
+        return InputConstants.isKeyDown(window, key.getValue());
     }
 
     @SubscribeEvent
@@ -34,6 +54,14 @@ public final class ClientAbilityInput {
         }
         while (AbilityKeyMappings.CYCLE.consumeClick()) {
             selectNext(abilityData);
+        }
+        if (suppressWheelUntilKeyReleased) {
+            if (isWheelBindPhysicallyDown()) {
+                while (AbilityKeyMappings.WHEEL.consumeClick()) {
+                }
+            } else {
+                suppressWheelUntilKeyReleased = false;
+            }
         }
         while (AbilityKeyMappings.WHEEL.consumeClick()) {
             if (Minecraft.getInstance().screen == null) {

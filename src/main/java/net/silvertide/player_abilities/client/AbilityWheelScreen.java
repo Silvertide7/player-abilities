@@ -109,6 +109,12 @@ public final class AbilityWheelScreen extends Screen {
     }
 
     @Override
+    public void removed() {
+        ClientAbilityInput.suppressWheelReopenUntilKeyReleased();
+        super.removed();
+    }
+
+    @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         Minecraft minecraft = Minecraft.getInstance();
         LocalPlayer player = minecraft.player;

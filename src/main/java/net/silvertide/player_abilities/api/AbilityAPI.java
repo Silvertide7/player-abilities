@@ -139,12 +139,12 @@ public final class AbilityAPI {
         }
         abilityData.clearPendingUseData();
         Component abilityName = Component.translatable(ability.getDescriptionId());
-        if (abilityData.isOnCooldown(ability)) {
+        if (!player.isCreative() && abilityData.isOnCooldown(ability)) {
             player.displayClientMessage(Component.translatable("message.player_abilities.on_cooldown", abilityName), true);
             return false;
         }
         Optional<RequirementProgress> pendingRequirements = abilityData.getRequirementProgress(ability);
-        if (pendingRequirements.isPresent()
+        if (!player.isCreative() && pendingRequirements.isPresent()
                 && !pendingRequirements.get().meets(AbilityConfigs.killRequirement(ability, level),
                 AbilityConfigs.damageTakenRequirement(ability, level))) {
             player.displayClientMessage(unmetRequirementMessage(ability, level, pendingRequirements.get()), true);
@@ -252,6 +252,9 @@ public final class AbilityAPI {
     }
 
     private static void resetRequirementProgress(ServerPlayer player, AbilityData abilityData, GatedAbility ability, int level) {
+        if (player.isCreative()) {
+            return;
+        }
         boolean hadProgress = abilityData.getRequirementProgress(ability).isPresent();
         if (AbilityConfigs.killRequirement(ability, level) > 0 || AbilityConfigs.damageTakenRequirement(ability, level) > 0) {
             RequirementProgress progress = new RequirementProgress(0, 0);
@@ -393,7 +396,7 @@ public final class AbilityAPI {
     public static boolean trigger(ServerPlayer player, TriggeredAbility<?> ability) {
         AbilityData abilityData = getData(player);
         int level = abilityData.getEffectiveLevel(ability);
-        if (level == 0 || abilityData.isOnCooldown(ability)) {
+        if (level == 0 || (!player.isCreative() && abilityData.isOnCooldown(ability))) {
             return false;
         }
         FiringTrigger firingTrigger = new FiringTrigger(player.getUUID(), ability);
@@ -409,7 +412,7 @@ public final class AbilityAPI {
 
     private static boolean runTrigger(ServerPlayer player, AbilityData abilityData, TriggeredAbility<?> ability, int level) {
         Optional<RequirementProgress> pendingRequirements = abilityData.getRequirementProgress(ability);
-        if (pendingRequirements.isPresent()
+        if (!player.isCreative() && pendingRequirements.isPresent()
                 && !pendingRequirements.get().meets(AbilityConfigs.killRequirement(ability, level),
                 AbilityConfigs.damageTakenRequirement(ability, level))) {
             return false;
@@ -557,6 +560,9 @@ public final class AbilityAPI {
     }
 
     private static void applyCompletionCooldown(ServerPlayer player, AbilityData abilityData, GatedAbility ability, int level) {
+        if (player.isCreative()) {
+            return;
+        }
         int cooldownTicks = applyCooldownAttribute(player, AbilityConfigs.cooldownTicks(ability, level));
         if (cooldownTicks > 0) {
             Cooldown cooldown = new Cooldown(cooldownTicks, cooldownTicks);
