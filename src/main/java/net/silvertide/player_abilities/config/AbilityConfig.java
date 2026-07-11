@@ -94,19 +94,36 @@ public record AbilityConfig(Optional<Boolean> enabled,
         }
     }
 
+    private static <T> Codec<T> logged(String fieldName, Codec<T> codec) {
+        return new Codec<>() {
+            @Override
+            public <D> com.mojang.serialization.DataResult<com.mojang.datafixers.util.Pair<T, D>> decode(com.mojang.serialization.DynamicOps<D> ops, D input) {
+                var result = codec.decode(ops, input);
+                result.error().ifPresent(error -> net.silvertide.player_abilities.PlayerAbilities.LOGGER.warn(
+                        "player_abilities config field '{}' is invalid and falls back to the ability default: {}", fieldName, error.message()));
+                return result;
+            }
+
+            @Override
+            public <D> com.mojang.serialization.DataResult<D> encode(T input, com.mojang.serialization.DynamicOps<D> ops, D prefix) {
+                return codec.encode(input, ops, prefix);
+            }
+        };
+    }
+
     public static final Codec<AbilityConfig> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            Codec.BOOL.optionalFieldOf("enabled").forGetter(AbilityConfig::enabled),
-            LeveledValue.codec(Codec.INT).optionalFieldOf("cooldown_ticks").forGetter(AbilityConfig::cooldownTicks),
-            LeveledValue.codec(Codec.INT).optionalFieldOf("kill_requirement").forGetter(AbilityConfig::killRequirement),
-            LeveledValue.codec(Codec.FLOAT).optionalFieldOf("damage_taken_requirement").forGetter(AbilityConfig::damageTakenRequirement),
-            LeveledValue.codec(Codec.INT).optionalFieldOf("use_ticks").forGetter(AbilityConfig::useTicks),
-            LeveledValue.codec(Codec.INT).optionalFieldOf("effect_duration_ticks").forGetter(AbilityConfig::effectDurationTicks),
-            Codec.intRange(1, Integer.MAX_VALUE).optionalFieldOf("max_level").forGetter(AbilityConfig::maxLevel),
-            ResourceLocation.CODEC.optionalFieldOf("category").forGetter(AbilityConfig::category),
-            PmmoUseRequirement.CODEC.optionalFieldOf("pmmo_use_requirement").forGetter(AbilityConfig::pmmoUseRequirement),
-            PmmoGrant.CODEC.listOf().optionalFieldOf("pmmo_grants").forGetter(AbilityConfig::pmmoGrants),
-            PuffishGrant.CODEC.listOf().optionalFieldOf("puffish_grants").forGetter(AbilityConfig::puffishGrants),
-            AttributeGrantConfig.CODEC.listOf().optionalFieldOf("attribute_grants").forGetter(AbilityConfig::attributeGrants),
-            EffectGrantConfig.CODEC.listOf().optionalFieldOf("effect_grants").forGetter(AbilityConfig::effectGrants)
+            logged("enabled", Codec.BOOL).optionalFieldOf("enabled").forGetter(AbilityConfig::enabled),
+            logged("cooldown_ticks", LeveledValue.codec(Codec.INT)).optionalFieldOf("cooldown_ticks").forGetter(AbilityConfig::cooldownTicks),
+            logged("kill_requirement", LeveledValue.codec(Codec.INT)).optionalFieldOf("kill_requirement").forGetter(AbilityConfig::killRequirement),
+            logged("damage_taken_requirement", LeveledValue.codec(Codec.FLOAT)).optionalFieldOf("damage_taken_requirement").forGetter(AbilityConfig::damageTakenRequirement),
+            logged("use_ticks", LeveledValue.codec(Codec.INT)).optionalFieldOf("use_ticks").forGetter(AbilityConfig::useTicks),
+            logged("effect_duration_ticks", LeveledValue.codec(Codec.INT)).optionalFieldOf("effect_duration_ticks").forGetter(AbilityConfig::effectDurationTicks),
+            logged("max_level", Codec.intRange(1, Integer.MAX_VALUE)).optionalFieldOf("max_level").forGetter(AbilityConfig::maxLevel),
+            logged("category", ResourceLocation.CODEC).optionalFieldOf("category").forGetter(AbilityConfig::category),
+            logged("pmmo_use_requirement", PmmoUseRequirement.CODEC).optionalFieldOf("pmmo_use_requirement").forGetter(AbilityConfig::pmmoUseRequirement),
+            logged("pmmo_grants", PmmoGrant.CODEC.listOf()).optionalFieldOf("pmmo_grants").forGetter(AbilityConfig::pmmoGrants),
+            logged("puffish_grants", PuffishGrant.CODEC.listOf()).optionalFieldOf("puffish_grants").forGetter(AbilityConfig::puffishGrants),
+            logged("attribute_grants", AttributeGrantConfig.CODEC.listOf()).optionalFieldOf("attribute_grants").forGetter(AbilityConfig::attributeGrants),
+            logged("effect_grants", EffectGrantConfig.CODEC.listOf()).optionalFieldOf("effect_grants").forGetter(AbilityConfig::effectGrants)
     ).apply(instance, AbilityConfig::new));
 }

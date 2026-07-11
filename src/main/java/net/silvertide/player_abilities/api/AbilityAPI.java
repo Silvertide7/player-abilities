@@ -5,6 +5,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.player.Player;
@@ -25,7 +26,6 @@ import net.silvertide.player_abilities.data.RequirementProgress;
 import net.silvertide.player_abilities.network.AbilitySync;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -525,7 +525,7 @@ public final class AbilityAPI {
     }
 
     public static void deactivatePassive(ServerPlayer player, PassiveAbility passive, int level) {
-        removeAttributeGrants(player, passive, level);
+        removeAttributeGrants(player, passive);
         passive.onDeactivated(player, level);
     }
 
@@ -545,23 +545,29 @@ public final class AbilityAPI {
         }
     }
 
-    public static void removeAttributeGrants(ServerPlayer player, PassiveAbility passive, int level) {
-        List<AttributeGrant> declaredEverywhere = new ArrayList<>(AbilityConfigs.attributeGrants(passive, level));
-        declaredEverywhere.addAll(passive.getAttributeGrants(level));
-        for (AttributeGrant attributeGrant : declaredEverywhere) {
-            AttributeInstance attributeInstance = player.getAttribute(attributeGrant.attribute());
-            if (attributeInstance != null) {
-                attributeInstance.removeModifier(attributeModifierUuid(attributeModifierName(passive, attributeGrant)));
+    public static void removeAttributeGrants(ServerPlayer player, PassiveAbility passive) {
+        String modifierNamePrefix = attributeModifierNamePrefix(passive);
+        for (Attribute attribute : ForgeRegistries.ATTRIBUTES) {
+            AttributeInstance attributeInstance = player.getAttribute(attribute);
+            if (attributeInstance == null) continue;
+            for (AttributeModifier modifier : List.copyOf(attributeInstance.getModifiers())) {
+                if (modifier.getName().startsWith(modifierNamePrefix)) {
+                    attributeInstance.removeModifier(modifier.getId());
+                }
             }
         }
     }
 
-    private static String attributeModifierName(PassiveAbility passive, AttributeGrant attributeGrant) {
+    private static String attributeModifierNamePrefix(PassiveAbility passive) {
         ResourceLocation abilityId = passive.getId();
+        return abilityId.getNamespace() + ":passive/" + abilityId.getPath() + "/";
+    }
+
+    private static String attributeModifierName(PassiveAbility passive, AttributeGrant attributeGrant) {
         ResourceLocation attributeId = java.util.Objects.requireNonNull(
                 ForgeRegistries.ATTRIBUTES.getKey(attributeGrant.attribute()));
-        return abilityId.getNamespace() + ":passive/" + abilityId.getPath()
-                + "/" + attributeId.getNamespace() + "." + attributeId.getPath()
+        return attributeModifierNamePrefix(passive)
+                + attributeId.getNamespace() + "." + attributeId.getPath()
                 + "/" + operationName(attributeGrant.operation());
     }
 

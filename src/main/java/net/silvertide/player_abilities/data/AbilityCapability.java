@@ -45,6 +45,8 @@ public final class AbilityCapability {
     private static final class Provider implements ICapabilitySerializable<CompoundTag> {
         private final AbilityData data = new AbilityData();
         private final LazyOptional<AbilityData> optional = LazyOptional.of(() -> data);
+        @Nullable
+        private CompoundTag undecodableTag;
 
         @Override
         public @NotNull <T> LazyOptional<T> getCapability(@NotNull Capability<T> capability, @Nullable Direction side) {
@@ -53,6 +55,9 @@ public final class AbilityCapability {
 
         @Override
         public CompoundTag serializeNBT() {
+            if (undecodableTag != null) {
+                return undecodableTag.copy();
+            }
             return (CompoundTag) AbilityData.CODEC.encodeStart(NbtOps.INSTANCE, data)
                     .resultOrPartial(PlayerAbilities.LOGGER::error)
                     .orElseGet(CompoundTag::new);
@@ -60,9 +65,16 @@ public final class AbilityCapability {
 
         @Override
         public void deserializeNBT(CompoundTag tag) {
-            AbilityData.CODEC.parse(NbtOps.INSTANCE, tag)
-                    .resultOrPartial(PlayerAbilities.LOGGER::error)
-                    .ifPresent(data::loadFrom);
+            var parsed = AbilityData.CODEC.parse(NbtOps.INSTANCE, tag);
+            if (parsed.result().isPresent()) {
+                undecodableTag = null;
+                data.loadFrom(parsed.result().get());
+                return;
+            }
+            undecodableTag = tag.copy();
+            PlayerAbilities.LOGGER.error(
+                    "Could not decode ability data ({}); preserving the raw data and freezing saves so it is not overwritten",
+                    parsed.error().map(error -> error.message()).orElse("unknown error"));
         }
     }
 

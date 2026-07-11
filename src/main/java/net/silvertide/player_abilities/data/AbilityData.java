@@ -31,25 +31,27 @@ public class AbilityData {
     public static final ResourceLocation CLIENT_SYNCED_SOURCE = PlayerAbilities.id("client_synced");
 
     public static final Codec<AbilityData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            Codec.unboundedMap(ResourceLocation.CODEC, Codec.unboundedMap(ResourceLocation.CODEC, Codec.INT))
+            LenientCodecs.resourceLocationMap(LenientCodecs.resourceLocationMap(Codec.INT, "ability grant"), "grant source")
                     .optionalFieldOf("leveled_grants", Map.of())
                     .forGetter(AbilityData::grantsAsIds),
-            Codec.unboundedMap(ResourceLocation.CODEC, Cooldown.CODEC)
+            LenientCodecs.resourceLocationMap(Cooldown.CODEC, "ability cooldown")
                     .optionalFieldOf("cooldowns", Map.of())
                     .forGetter(AbilityData::cooldownsAsIds),
-            Codec.unboundedMap(ResourceLocation.CODEC, ActiveEffect.CODEC)
+            LenientCodecs.resourceLocationMap(ActiveEffect.CODEC, "ability effect")
                     .optionalFieldOf("effects", Map.of())
                     .forGetter(AbilityData::effectsAsIds),
-            Codec.unboundedMap(ResourceLocation.CODEC, RequirementProgress.CODEC)
+            LenientCodecs.resourceLocationMap(RequirementProgress.CODEC, "ability requirement")
                     .optionalFieldOf("requirements", Map.of())
                     .forGetter(AbilityData::requirementsAsIds),
-            ResourceLocation.CODEC.listOf().optionalFieldOf("disabled_passives", List.of())
+            LenientCodecs.list(ResourceLocation.CODEC, "disabled passive")
+                    .optionalFieldOf("disabled_passives", List.of())
                     .forGetter(AbilityData::disabledPassivesAsIds),
             ResourceLocation.CODEC.optionalFieldOf("selected")
                     .forGetter(abilityData -> abilityData.getSelected().map(Ability::getId))
     ).apply(instance, AbilityData::fromSerialized));
 
     private final Map<ResourceLocation, Map<Ability, Integer>> grants = new HashMap<>();
+    private final Map<ResourceLocation, Map<ResourceLocation, Integer>> unresolvedGrants = new HashMap<>();
     private final Map<GatedAbility, Cooldown> cooldowns = new HashMap<>();
     private final Map<Ability, ActiveEffect> activeEffects = new HashMap<>();
     private final Map<GatedAbility, RequirementProgress> requirementProgress = new HashMap<>();
@@ -77,7 +79,8 @@ public class AbilityData {
         grantLevelsBySource.forEach((source, abilityLevels) -> abilityLevels.forEach((abilityId, level) -> {
             Ability ability = AbilityRegistry.abilities().getValue(abilityId);
             if (ability == null) {
-                PlayerAbilities.LOGGER.warn("Dropping grant of unknown ability {} from source {}", abilityId, source);
+                PlayerAbilities.LOGGER.warn("Retaining grant of unknown ability {} from source {}; it resolves again if the ability returns", abilityId, source);
+                abilityData.unresolvedGrants.computeIfAbsent(source, key -> new HashMap<>()).put(abilityId, level);
             } else {
                 abilityData.setGrant(source, ability, level);
             }
@@ -99,11 +102,13 @@ public class AbilityData {
     }
 
     private Map<ResourceLocation, Map<ResourceLocation, Integer>> grantsAsIds() {
-        return grants.entrySet().stream().collect(Collectors.toMap(
-                Map.Entry::getKey,
-                entry -> entry.getValue().entrySet().stream().collect(Collectors.toMap(
-                        abilityLevel -> abilityLevel.getKey().getId(),
-                        Map.Entry::getValue))));
+        Map<ResourceLocation, Map<ResourceLocation, Integer>> byId = new HashMap<>();
+        unresolvedGrants.forEach((source, abilityLevels) -> byId.put(source, new HashMap<>(abilityLevels)));
+        grants.forEach((source, abilityLevels) -> {
+            Map<ResourceLocation, Integer> target = byId.computeIfAbsent(source, key -> new HashMap<>());
+            abilityLevels.forEach((ability, level) -> target.put(ability.getId(), level));
+        });
+        return byId;
     }
 
     private Map<ResourceLocation, Cooldown> cooldownsAsIds() {
@@ -393,6 +398,8 @@ public class AbilityData {
         cachedTriggeredGrants = null;
         grants.clear();
         other.grants.forEach((source, abilityLevels) -> grants.put(source, new HashMap<>(abilityLevels)));
+        unresolvedGrants.clear();
+        other.unresolvedGrants.forEach((source, abilityLevels) -> unresolvedGrants.put(source, new HashMap<>(abilityLevels)));
         cooldowns.clear();
         cooldowns.putAll(other.cooldowns);
         activeEffects.clear();
@@ -408,6 +415,7 @@ public class AbilityData {
                                    @Nullable ActiveAbility newSelected) {
         cachedTriggeredGrants = null;
         grants.clear();
+        unresolvedGrants.clear();
         if (!grantedLevels.isEmpty()) {
             grants.put(CLIENT_SYNCED_SOURCE, new HashMap<>(grantedLevels));
         }

@@ -48,6 +48,11 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
         super(new Gson(), DATAPACK_DIRECTORY);
     }
 
+    private static final Set<String> KNOWN_CONFIG_KEYS = Set.of(
+            "enabled", "cooldown_ticks", "kill_requirement", "damage_taken_requirement", "use_ticks",
+            "effect_duration_ticks", "max_level", "category", "pmmo_use_requirement", "pmmo_grants",
+            "puffish_grants", "attribute_grants", "effect_grants");
+
     @Override
     protected void apply(Map<ResourceLocation, JsonElement> rawEntries, ResourceManager resourceManager, ProfilerFiller profiler) {
         Map<Ability, AbilityConfig> parsed = new HashMap<>();
@@ -56,6 +61,12 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
             if (ability == null) {
                 PlayerAbilities.LOGGER.warn("Skipping player_abilities config for unknown ability {}", abilityId);
                 return;
+            }
+            if (json.isJsonObject()) {
+                json.getAsJsonObject().keySet().stream()
+                        .filter(key -> !KNOWN_CONFIG_KEYS.contains(key))
+                        .forEach(key -> PlayerAbilities.LOGGER.warn(
+                                "player_abilities config for {} has unknown key '{}' (typo?)", abilityId, key));
             }
             AbilityConfig.CODEC.parse(JsonOps.INSTANCE, json)
                     .resultOrPartial(error -> PlayerAbilities.LOGGER.warn(

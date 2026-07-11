@@ -124,14 +124,14 @@ public final class PlayerLifecycleHandler {
             AbilityAPI.recordDamageTaken(victim, amount);
         }
         server.tell(new TickTask(server.getTickCount(), () -> {
-            if (victim != null && !victim.hasDisconnected()) {
+            if (victim != null && !victim.hasDisconnected() && !victim.isDeadOrDying()) {
                 AbilityAPI.fireTrigger(PlayerTriggers.DAMAGE_TAKEN, victim,
                         new PlayerTriggers.DamageTaken(amount, source));
                 AbilityAPI.fireTrigger(PlayerTriggers.HEALTH_DROPPED, victim,
                         new PlayerTriggers.HealthChange(healthBefore, Math.max(0F, healthBefore - amount),
                                 victim.getMaxHealth()));
             }
-            if (attacker != null && !attacker.hasDisconnected()) {
+            if (attacker != null && !attacker.hasDisconnected() && attacker.isAlive()) {
                 AbilityAPI.fireTrigger(PlayerTriggers.DEALT_DAMAGE, attacker,
                         new PlayerTriggers.DamageDealt(target, amount));
             }
@@ -174,7 +174,7 @@ public final class PlayerLifecycleHandler {
             if (AbilityConfigs.isEnabled(passive) && AbilityAPI.isPassiveEnabled(grantSourcePlayer, passive)) {
                 AbilityAPI.activatePassive(targetPlayer, passive, rawLevel);
             } else {
-                AbilityAPI.removeAttributeGrants(targetPlayer, passive, rawLevel);
+                AbilityAPI.removeAttributeGrants(targetPlayer, passive);
             }
         }
     }
