@@ -7,10 +7,10 @@ import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
 import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.Ability;
 import net.silvertide.player_abilities.data.RequirementProgress;
@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-@EventBusSubscriber(modid = PlayerAbilities.MOD_ID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = PlayerAbilities.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class AbilityIcons {
     private static final Map<Ability, Optional<ResourceLocation>> ICON_CACHE = new HashMap<>();
     private static final Map<Ability, String> INITIALS_CACHE = new HashMap<>();
@@ -42,7 +42,7 @@ public final class AbilityIcons {
 
     public static Optional<ResourceLocation> icon(Ability ability) {
         return ICON_CACHE.computeIfAbsent(ability, keyedAbility -> {
-            ResourceLocation texture = ResourceLocation.fromNamespaceAndPath(
+            ResourceLocation texture = new ResourceLocation(
                     keyedAbility.getId().getNamespace(),
                     "textures/ability/" + keyedAbility.getId().getPath() + ".png");
             return Minecraft.getInstance().getResourceManager().getResource(texture).isPresent()

@@ -2,15 +2,15 @@ package net.silvertide.player_abilities.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
-import net.neoforged.neoforge.client.settings.KeyConflictContext;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
+import net.minecraftforge.client.settings.KeyConflictContext;
 import net.silvertide.player_abilities.PlayerAbilities;
 import org.lwjgl.glfw.GLFW;
 
-@EventBusSubscriber(modid = PlayerAbilities.MOD_ID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = PlayerAbilities.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class AbilityKeyMappings {
     public static final String CATEGORY = "key.categories.player_abilities";
     public static final KeyMapping USE = new KeyMapping("key.player_abilities.use",

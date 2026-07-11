@@ -21,6 +21,7 @@ import net.silvertide.player_abilities.api.AbilityRegistry;
 import net.silvertide.player_abilities.api.PassiveAbility;
 import net.silvertide.player_abilities.api.TriggeredAbility;
 import net.silvertide.player_abilities.config.AbilityConfigs;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -33,7 +34,7 @@ public class AbilityBookItem extends Item {
 
     public static ItemStack createFor(Ability ability, int level) {
         ItemStack stack = new ItemStack(AbilityItems.ABILITY_BOOK.get());
-        stack.set(AbilityItems.ABILITY_BOOK_CONTENT.get(), new AbilityBookContent(ability.getId(), level));
+        new AbilityBookContent(ability.getId(), level).applyTo(stack);
         return stack;
     }
 
@@ -50,14 +51,14 @@ public class AbilityBookItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        AbilityBookContent content = stack.get(AbilityItems.ABILITY_BOOK_CONTENT.get());
+        AbilityBookContent content = AbilityBookContent.of(stack);
         if (content == null) {
             return InteractionResultHolder.fail(stack);
         }
         if (level.isClientSide || !(player instanceof ServerPlayer serverPlayer)) {
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
         }
-        Ability ability = AbilityRegistry.ABILITIES.get(content.abilityId());
+        Ability ability = AbilityRegistry.abilities().getValue(content.abilityId());
         if (ability == null) {
             serverPlayer.displayClientMessage(
                     Component.translatable("message.player_abilities.book_unknown_ability", content.abilityId().toString()), true);
@@ -87,9 +88,9 @@ public class AbilityBookItem extends Item {
 
     @Override
     public Component getName(ItemStack stack) {
-        AbilityBookContent content = stack.get(AbilityItems.ABILITY_BOOK_CONTENT.get());
+        AbilityBookContent content = AbilityBookContent.of(stack);
         if (content != null) {
-            Ability ability = AbilityRegistry.ABILITIES.get(content.abilityId());
+            Ability ability = AbilityRegistry.abilities().getValue(content.abilityId());
             if (ability != null) {
                 return Component.translatable("item.player_abilities.ability_book.named",
                         Component.translatable(ability.getDescriptionId()));
@@ -99,12 +100,12 @@ public class AbilityBookItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
-        AbilityBookContent content = stack.get(AbilityItems.ABILITY_BOOK_CONTENT.get());
+    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
+        AbilityBookContent content = AbilityBookContent.of(stack);
         if (content == null) {
             return;
         }
-        Ability ability = AbilityRegistry.ABILITIES.get(content.abilityId());
+        Ability ability = AbilityRegistry.abilities().getValue(content.abilityId());
         if (ability == null) {
             tooltip.add(Component.literal(content.abilityId().toString()).withStyle(ChatFormatting.DARK_RED));
             return;

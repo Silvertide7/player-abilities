@@ -13,6 +13,7 @@ import net.silvertide.player_abilities.api.GatedAbility;
 import net.silvertide.player_abilities.api.PassiveAbility;
 import net.silvertide.player_abilities.api.TriggeredAbility;
 import net.silvertide.player_abilities.config.AbilityConfigs;
+import net.minecraftforge.common.capabilities.AutoRegisterCapability;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
@@ -25,6 +26,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@AutoRegisterCapability
 public class AbilityData {
     public static final ResourceLocation CLIENT_SYNCED_SOURCE = PlayerAbilities.id("client_synced");
 
@@ -73,7 +75,7 @@ public class AbilityData {
                                               Optional<ResourceLocation> selectedId) {
         AbilityData abilityData = new AbilityData();
         grantLevelsBySource.forEach((source, abilityLevels) -> abilityLevels.forEach((abilityId, level) -> {
-            Ability ability = AbilityRegistry.ABILITIES.get(abilityId);
+            Ability ability = AbilityRegistry.abilities().getValue(abilityId);
             if (ability == null) {
                 PlayerAbilities.LOGGER.warn("Dropping grant of unknown ability {} from source {}", abilityId, source);
             } else {
@@ -83,7 +85,7 @@ public class AbilityData {
         cooldownsByAbilityId.forEach((abilityId, cooldown) ->
                 AbilityRegistry.getGated(abilityId).ifPresent(gated -> abilityData.cooldowns.put(gated, cooldown)));
         effectsByAbilityId.forEach((abilityId, effect) -> {
-            Ability ability = AbilityRegistry.ABILITIES.get(abilityId);
+            Ability ability = AbilityRegistry.abilities().getValue(abilityId);
             if (ability != null) {
                 abilityData.activeEffects.put(ability, effect);
             }
@@ -385,6 +387,21 @@ public class AbilityData {
         }
         cooldowns.replaceAll((ability, cooldown) -> cooldown.decremented());
         cooldowns.values().removeIf(Cooldown::isExpired);
+    }
+
+    void loadFrom(AbilityData other) {
+        cachedTriggeredGrants = null;
+        grants.clear();
+        other.grants.forEach((source, abilityLevels) -> grants.put(source, new HashMap<>(abilityLevels)));
+        cooldowns.clear();
+        cooldowns.putAll(other.cooldowns);
+        activeEffects.clear();
+        activeEffects.putAll(other.activeEffects);
+        requirementProgress.clear();
+        requirementProgress.putAll(other.requirementProgress);
+        disabledPassives.clear();
+        disabledPassives.addAll(other.disabledPassives);
+        selected = other.selected;
     }
 
     public void replaceSyncedState(Map<Ability, Integer> grantedLevels, Set<PassiveAbility> newDisabledPassives,

@@ -7,9 +7,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.EventPriority;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.OnDatapackSyncEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.OnDatapackSyncEvent;
 import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.Ability;
 import net.silvertide.player_abilities.api.AbilityAPI;
@@ -33,9 +33,9 @@ public final class PmmoCompat {
     }
 
     public static void init() {
-        NeoForge.EVENT_BUS.addListener(PmmoCompat::onAbilityPerform);
-        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, PmmoCompat::onXpEvent);
-        NeoForge.EVENT_BUS.addListener(PmmoCompat::onDatapackSync);
+        MinecraftForge.EVENT_BUS.addListener(PmmoCompat::onAbilityPerform);
+        MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, PmmoCompat::onXpEvent);
+        MinecraftForge.EVENT_BUS.addListener(PmmoCompat::onDatapackSync);
     }
 
     private static void onAbilityPerform(AbilityPerformEvent event) {
@@ -62,7 +62,11 @@ public final class PmmoCompat {
     }
 
     private static void onDatapackSync(OnDatapackSyncEvent event) {
-        event.getRelevantPlayers().forEach(PmmoCompat::scheduleReconcile);
+        if (event.getPlayer() != null) {
+            scheduleReconcile(event.getPlayer());
+        } else {
+            event.getPlayerList().getPlayers().forEach(PmmoCompat::scheduleReconcile);
+        }
     }
 
     private static void scheduleReconcile(ServerPlayer player) {
@@ -79,7 +83,7 @@ public final class PmmoCompat {
 
     private static void reconcile(ServerPlayer player) {
         Map<ResourceLocation, LeveledAbility> expectedBySource = new HashMap<>();
-        AbilityRegistry.ABILITIES.forEach(ability -> {
+        AbilityRegistry.abilities().forEach(ability -> {
             for (AbilityConfig.PmmoGrant grant : AbilityConfigs.pmmoGrants(ability)) {
                 if (APIUtils.getLevel(grant.skill(), player) >= grant.pmmoLevel()) {
                     expectedBySource.merge(sourceFor(grant.skill(), ability),

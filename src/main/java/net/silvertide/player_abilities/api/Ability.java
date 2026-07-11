@@ -17,7 +17,7 @@ public abstract class Ability {
 
     public ResourceLocation getId() {
         if (cachedId == null) {
-            cachedId = AbilityRegistry.ABILITIES.getKey(this);
+            cachedId = AbilityRegistry.abilities().getKey(this);
         }
         return cachedId;
     }

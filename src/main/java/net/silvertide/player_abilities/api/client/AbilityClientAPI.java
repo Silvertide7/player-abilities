@@ -2,10 +2,10 @@ package net.silvertide.player_abilities.api.client;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.silvertide.player_abilities.network.AbilityNetworking;
 import net.silvertide.player_abilities.api.ActiveAbility;
 import net.silvertide.player_abilities.api.PassiveAbility;
-import net.silvertide.player_abilities.data.AbilityAttachments;
+import net.silvertide.player_abilities.data.AbilityCapability;
 import net.silvertide.player_abilities.network.UseAbilityPayload;
 import net.silvertide.player_abilities.network.SelectAbilityPayload;
 import net.silvertide.player_abilities.network.TogglePassivePayload;
@@ -19,15 +19,15 @@ public final class AbilityClientAPI {
         if (player == null) {
             return;
         }
-        player.getData(AbilityAttachments.ABILITY_DATA).setSelected(ability);
-        PacketDistributor.sendToServer(new SelectAbilityPayload(ability.getId()));
+        AbilityCapability.get(player).setSelected(ability);
+        AbilityNetworking.sendToServer(new SelectAbilityPayload(ability.getId()));
     }
 
     public static void use() {
-        PacketDistributor.sendToServer(UseAbilityPayload.INSTANCE);
+        AbilityNetworking.sendToServer(new UseAbilityPayload());
     }
 
     public static void togglePassive(PassiveAbility passive) {
-        PacketDistributor.sendToServer(new TogglePassivePayload(passive.getId()));
+        AbilityNetworking.sendToServer(new TogglePassivePayload(passive.getId()));
     }
 }

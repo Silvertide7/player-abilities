@@ -1,36 +1,38 @@
 package net.silvertide.player_abilities.event;
 
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent;
-import net.neoforged.neoforge.event.entity.living.LivingEvent;
-import net.neoforged.neoforge.event.entity.living.LivingFallEvent;
-import net.neoforged.neoforge.event.entity.living.LivingShieldBlockEvent;
-import net.neoforged.neoforge.event.entity.player.CriticalHitEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerWakeUpEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerXpEvent;
-import net.neoforged.neoforge.event.level.BlockEvent;
+import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent;
+import net.minecraftforge.event.entity.living.LivingEvent;
+import net.minecraftforge.event.entity.living.LivingFallEvent;
+import net.minecraftforge.event.entity.living.ShieldBlockEvent;
+import net.minecraftforge.event.entity.player.CriticalHitEvent;
+import net.minecraftforge.event.entity.player.PlayerWakeUpEvent;
+import net.minecraftforge.event.entity.player.PlayerXpEvent;
+import net.minecraftforge.event.level.BlockEvent;
+import net.minecraftforge.eventbus.api.Event;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.AbilityAPI;
 import net.silvertide.player_abilities.api.PlayerTriggers;
 
-@EventBusSubscriber(modid = PlayerAbilities.MOD_ID)
+@Mod.EventBusSubscriber(modid = PlayerAbilities.MOD_ID)
 public final class PlayerTriggerHandler {
     private PlayerTriggerHandler() {
     }
 
     @SubscribeEvent
     public static void onCrit(CriticalHitEvent event) {
-        if (event.isCriticalHit() && event.getEntity() instanceof ServerPlayer serverPlayer) {
+        boolean isCrit = event.getResult() == Event.Result.ALLOW
+                || (event.getResult() == Event.Result.DEFAULT && event.isVanillaCritical());
+        if (isCrit && event.getEntity() instanceof ServerPlayer serverPlayer) {
             AbilityAPI.fireTrigger(PlayerTriggers.CRIT, serverPlayer, event.getTarget());
         }
     }
 
     @SubscribeEvent
-    public static void onShieldBlock(LivingShieldBlockEvent event) {
-        if (event.getBlocked() && event.getEntity() instanceof ServerPlayer serverPlayer) {
+    public static void onShieldBlock(ShieldBlockEvent event) {
+        if (!event.isCanceled() && event.getEntity() instanceof ServerPlayer serverPlayer) {
             AbilityAPI.fireTrigger(PlayerTriggers.SHIELD_BLOCK, serverPlayer, event.getBlockedDamage());
         }
     }
@@ -65,7 +67,8 @@ public final class PlayerTriggerHandler {
 
     @SubscribeEvent
     public static void onEat(LivingEntityUseItemEvent.Finish event) {
-        if (event.getEntity() instanceof ServerPlayer serverPlayer && event.getItem().has(DataComponents.FOOD)) {
+        if (event.getEntity() instanceof ServerPlayer serverPlayer
+                && event.getItem().getFoodProperties(serverPlayer) != null) {
             AbilityAPI.fireTrigger(PlayerTriggers.EAT, serverPlayer, event.getItem());
         }
     }

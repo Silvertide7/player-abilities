@@ -3,21 +3,21 @@ package net.silvertide.player_abilities.client;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.event.TickEvent;
 import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.Ability;
 import net.silvertide.player_abilities.api.GatedAbility;
-import net.silvertide.player_abilities.data.AbilityAttachments;
+import net.silvertide.player_abilities.data.AbilityCapability;
 import net.silvertide.player_abilities.data.AbilityData;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-@EventBusSubscriber(modid = PlayerAbilities.MOD_ID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = PlayerAbilities.MOD_ID, value = Dist.CLIENT)
 public final class AbilityNotifications {
     public static final int ACTIVATED_DISPLAY_TICKS = 100;
     public static final int READY_DISPLAY_TICKS = 60;
@@ -74,7 +74,8 @@ public final class AbilityNotifications {
     }
 
     @SubscribeEvent
-    public static void onClientTick(ClientTickEvent.Post event) {
+    public static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {
             clearAll();
@@ -85,7 +86,7 @@ public final class AbilityNotifications {
         if (awaitingReady.isEmpty()) {
             return;
         }
-        AbilityData abilityData = player.getData(AbilityAttachments.ABILITY_DATA);
+        AbilityData abilityData = AbilityCapability.get(player);
         Iterator<GatedAbility> awaiting = awaitingReady.iterator();
         while (awaiting.hasNext()) {
             GatedAbility ability = awaiting.next();

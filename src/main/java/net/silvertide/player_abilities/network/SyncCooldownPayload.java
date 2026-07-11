@@ -1,21 +1,16 @@
 package net.silvertide.player_abilities.network;
 
-import io.netty.buffer.ByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
-import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.Cooldown;
 
-public record SyncCooldownPayload(ResourceLocation abilityId, Cooldown cooldown) implements CustomPacketPayload {
-    public static final Type<SyncCooldownPayload> TYPE = new Type<>(PlayerAbilities.id("sync_cooldown"));
-    public static final StreamCodec<ByteBuf, SyncCooldownPayload> STREAM_CODEC = StreamCodec.composite(
-            ResourceLocation.STREAM_CODEC, SyncCooldownPayload::abilityId,
-            Cooldown.STREAM_CODEC, SyncCooldownPayload::cooldown,
-            SyncCooldownPayload::new);
+public record SyncCooldownPayload(ResourceLocation abilityId, Cooldown cooldown) {
+    public void encode(FriendlyByteBuf buf) {
+        buf.writeResourceLocation(abilityId);
+        cooldown.encode(buf);
+    }
 
-    @Override
-    public Type<? extends CustomPacketPayload> type() {
-        return TYPE;
+    public static SyncCooldownPayload decode(FriendlyByteBuf buf) {
+        return new SyncCooldownPayload(buf.readResourceLocation(), Cooldown.decode(buf));
     }
 }

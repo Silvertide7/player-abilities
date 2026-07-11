@@ -13,7 +13,7 @@ import net.silvertide.player_abilities.api.ActiveAbility;
 import net.silvertide.player_abilities.api.client.AbilityClientAPI;
 import net.silvertide.player_abilities.config.AbilityClientConfig;
 import net.silvertide.player_abilities.config.AbilityConfigs;
-import net.silvertide.player_abilities.data.AbilityAttachments;
+import net.silvertide.player_abilities.data.AbilityCapability;
 import net.silvertide.player_abilities.data.AbilityData;
 import org.joml.Matrix4f;
 
@@ -58,7 +58,7 @@ public final class AbilityWheelScreen extends Screen {
 
     public AbilityWheelScreen(LocalPlayer player) {
         super(Component.empty());
-        List<ActiveAbility> grantedActives = player.getData(AbilityAttachments.ABILITY_DATA).getGrantedActives();
+        List<ActiveAbility> grantedActives = AbilityCapability.get(player).getGrantedActives();
         if (AbilityClientConfig.WHEEL_GROUP_BY_CATEGORY.get()) {
             Map<ResourceLocation, List<ActiveAbility>> byCategory = new TreeMap<>();
             for (ActiveAbility ability : grantedActives) {
@@ -122,7 +122,7 @@ public final class AbilityWheelScreen extends Screen {
             onClose();
             return;
         }
-        AbilityData abilityData = player.getData(AbilityAttachments.ABILITY_DATA);
+        AbilityData abilityData = AbilityCapability.get(player);
         float centerX = width / 2.0f;
         float centerY = height / 2.0f;
         List<ActiveAbility> pageAbilities = currentPage();
@@ -195,14 +195,14 @@ public final class AbilityWheelScreen extends Screen {
             float sin0 = Mth.sin(a0);
             float cos1 = Mth.cos(a1);
             float sin1 = Mth.sin(a1);
-            buffer.addVertex(pose, centerX + cos0 * innerRadius, centerY + sin0 * innerRadius, 0)
-                    .setColor(color[0], color[1], color[2], color[3]);
-            buffer.addVertex(pose, centerX + cos1 * innerRadius, centerY + sin1 * innerRadius, 0)
-                    .setColor(color[0], color[1], color[2], color[3]);
-            buffer.addVertex(pose, centerX + cos1 * outerRadius, centerY + sin1 * outerRadius, 0)
-                    .setColor(color[0], color[1], color[2], outerAlpha);
-            buffer.addVertex(pose, centerX + cos0 * outerRadius, centerY + sin0 * outerRadius, 0)
-                    .setColor(color[0], color[1], color[2], outerAlpha);
+            buffer.vertex(pose, centerX + cos0 * innerRadius, centerY + sin0 * innerRadius, 0)
+                    .color(color[0], color[1], color[2], color[3]).endVertex();
+            buffer.vertex(pose, centerX + cos1 * innerRadius, centerY + sin1 * innerRadius, 0)
+                    .color(color[0], color[1], color[2], color[3]).endVertex();
+            buffer.vertex(pose, centerX + cos1 * outerRadius, centerY + sin1 * outerRadius, 0)
+                    .color(color[0], color[1], color[2], outerAlpha).endVertex();
+            buffer.vertex(pose, centerX + cos0 * outerRadius, centerY + sin0 * outerRadius, 0)
+                    .color(color[0], color[1], color[2], outerAlpha).endVertex();
         }
     }
 
@@ -216,14 +216,14 @@ public final class AbilityWheelScreen extends Screen {
             float rim0Y = centerY + Mth.sin(a0) * HUB_RADIUS;
             float rim1X = centerX + Mth.cos(a1) * HUB_RADIUS;
             float rim1Y = centerY + Mth.sin(a1) * HUB_RADIUS;
-            buffer.addVertex(pose, centerX, centerY, 0)
-                    .setColor(HUB_COLOR[0], HUB_COLOR[1], HUB_COLOR[2], HUB_COLOR[3]);
-            buffer.addVertex(pose, rim0X, rim0Y, 0)
-                    .setColor(HUB_COLOR[0], HUB_COLOR[1], HUB_COLOR[2], HUB_COLOR[3] * 0.85f);
-            buffer.addVertex(pose, rim1X, rim1Y, 0)
-                    .setColor(HUB_COLOR[0], HUB_COLOR[1], HUB_COLOR[2], HUB_COLOR[3] * 0.85f);
-            buffer.addVertex(pose, rim1X, rim1Y, 0)
-                    .setColor(HUB_COLOR[0], HUB_COLOR[1], HUB_COLOR[2], HUB_COLOR[3] * 0.85f);
+            buffer.vertex(pose, centerX, centerY, 0)
+                    .color(HUB_COLOR[0], HUB_COLOR[1], HUB_COLOR[2], HUB_COLOR[3]).endVertex();
+            buffer.vertex(pose, rim0X, rim0Y, 0)
+                    .color(HUB_COLOR[0], HUB_COLOR[1], HUB_COLOR[2], HUB_COLOR[3] * 0.85f).endVertex();
+            buffer.vertex(pose, rim1X, rim1Y, 0)
+                    .color(HUB_COLOR[0], HUB_COLOR[1], HUB_COLOR[2], HUB_COLOR[3] * 0.85f).endVertex();
+            buffer.vertex(pose, rim1X, rim1Y, 0)
+                    .color(HUB_COLOR[0], HUB_COLOR[1], HUB_COLOR[2], HUB_COLOR[3] * 0.85f).endVertex();
         }
     }
 
@@ -284,14 +284,14 @@ public final class AbilityWheelScreen extends Screen {
         float[] color = hovered ? PAGE_ARROW_HOVERED_COLOR : PAGE_ARROW_COLOR;
         float baseX = pointsRight ? centerX - PAGE_ARROW_HALF_WIDTH : centerX + PAGE_ARROW_HALF_WIDTH;
         float tipX = pointsRight ? centerX + PAGE_ARROW_HALF_WIDTH : centerX - PAGE_ARROW_HALF_WIDTH;
-        buffer.addVertex(pose, baseX, centerY - PAGE_ARROW_HALF_HEIGHT, 0).setColor(color[0], color[1], color[2], color[3]);
-        buffer.addVertex(pose, baseX, centerY + PAGE_ARROW_HALF_HEIGHT, 0).setColor(color[0], color[1], color[2], color[3]);
-        buffer.addVertex(pose, tipX, centerY, 0).setColor(color[0], color[1], color[2], color[3]);
-        buffer.addVertex(pose, tipX, centerY, 0).setColor(color[0], color[1], color[2], color[3]);
+        buffer.vertex(pose, baseX, centerY - PAGE_ARROW_HALF_HEIGHT, 0).color(color[0], color[1], color[2], color[3]).endVertex();
+        buffer.vertex(pose, baseX, centerY + PAGE_ARROW_HALF_HEIGHT, 0).color(color[0], color[1], color[2], color[3]).endVertex();
+        buffer.vertex(pose, tipX, centerY, 0).color(color[0], color[1], color[2], color[3]).endVertex();
+        buffer.vertex(pose, tipX, centerY, 0).color(color[0], color[1], color[2], color[3]).endVertex();
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
         if (pageCount() > 1 && ticksOpen - lastScrollPageTick >= SCROLL_PAGE_COOLDOWN_TICKS) {
             changePage(scrollY < 0 ? 1 : -1);
             lastScrollPageTick = ticksOpen;

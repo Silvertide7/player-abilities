@@ -1,10 +1,10 @@
 package net.silvertide.player_abilities.client;
 
 import net.minecraft.client.renderer.item.ItemProperties;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.Ability;
 import net.silvertide.player_abilities.api.AbilityRegistry;
@@ -13,7 +13,7 @@ import net.silvertide.player_abilities.api.TriggeredAbility;
 import net.silvertide.player_abilities.item.AbilityBookContent;
 import net.silvertide.player_abilities.item.AbilityItems;
 
-@EventBusSubscriber(modid = PlayerAbilities.MOD_ID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = PlayerAbilities.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class AbilityBookItemModel {
     private AbilityBookItemModel() {
     }
@@ -22,11 +22,11 @@ public final class AbilityBookItemModel {
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> ItemProperties.register(AbilityItems.ABILITY_BOOK.get(), PlayerAbilities.id("kind"),
                 (stack, level, entity, seed) -> {
-                    AbilityBookContent content = stack.get(AbilityItems.ABILITY_BOOK_CONTENT.get());
+                    AbilityBookContent content = AbilityBookContent.of(stack);
                     if (content == null) {
                         return 0.0f;
                     }
-                    Ability ability = AbilityRegistry.ABILITIES.get(content.abilityId());
+                    Ability ability = AbilityRegistry.abilities().getValue(content.abilityId());
                     if (ability instanceof TriggeredAbility) {
                         return 2.0f;
                     }

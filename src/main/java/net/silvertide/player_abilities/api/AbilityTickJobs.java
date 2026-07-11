@@ -1,10 +1,10 @@
 package net.silvertide.player_abilities.api;
 
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.event.server.ServerStoppedEvent;
+import net.minecraftforge.event.TickEvent;
 import net.silvertide.player_abilities.PlayerAbilities;
 
 import java.util.ArrayList;
@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-@EventBusSubscriber(modid = PlayerAbilities.MOD_ID)
+@Mod.EventBusSubscriber(modid = PlayerAbilities.MOD_ID)
 public final class AbilityTickJobs {
     public interface TickJob {
         boolean tick(ServerPlayer player);
@@ -52,7 +52,8 @@ public final class AbilityTickJobs {
     }
 
     @SubscribeEvent
-    public static void onServerTick(ServerTickEvent.Post event) {
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
         if (JOBS_BY_PLAYER.isEmpty()) {
             return;
         }

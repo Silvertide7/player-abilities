@@ -14,7 +14,7 @@ import net.silvertide.player_abilities.api.GatedAbility;
 import net.silvertide.player_abilities.api.PassiveAbility;
 import net.silvertide.player_abilities.api.TriggeredAbility;
 import net.silvertide.player_abilities.config.AbilityConfigs;
-import net.silvertide.player_abilities.data.AbilityAttachments;
+import net.silvertide.player_abilities.data.AbilityCapability;
 import net.silvertide.player_abilities.data.AbilityData;
 import net.silvertide.player_abilities.api.client.AbilityClientAPI;
 import net.silvertide.player_abilities.data.RequirementProgress;
@@ -105,7 +105,7 @@ public final class AbilityBookScreen extends Screen {
 
     public AbilityBookScreen(LocalPlayer player) {
         super(Component.translatable("gui.player_abilities.book_title"));
-        this.abilityData = player.getData(AbilityAttachments.ABILITY_DATA);
+        this.abilityData = AbilityCapability.get(player);
     }
 
     @Override
@@ -353,7 +353,7 @@ public final class AbilityBookScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
         scrollOffset -= scrollY * (font.lineHeight + 1) * 3;
         return true;
     }

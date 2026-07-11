@@ -1,6 +1,6 @@
 # Player Abilities
 
-A personal NeoForge mod (Minecraft 1.21.1, NeoForge 21.1.230) that provides a framework / API for player abilities, both active and passive. Other mods (and this one) register abilities through the API; players acquire and use them in game.
+A personal Forge mod (this branch: Minecraft **1.20.1**, Forge 47.2.1, Java 17, ForgeGradle 6 — `main` is the NeoForge 1.21.1 original) that provides a framework / API for player abilities, both active and passive. Other mods (and this one) register abilities through the API; players acquire and use them in game. The reusable NeoForge→Forge porting guide lives at `../claude_reference/forge-port/`.
 
 ## What we're building
 
@@ -37,7 +37,9 @@ Compat must be optional: the mod works standalone when neither is installed.
 - Mod id: `player_abilities`
 - Base package / group: `net.silvertide.player_abilities`
 - Main mod class: `src/main/java/net/silvertide/player_abilities/PlayerAbilities.java`
-- Mod metadata: `src/main/templates/META-INF/neoforge.mods.toml` (values are substituted from `gradle.properties`)
+- Mod metadata: `src/main/resources/META-INF/mods.toml` (values are substituted from `gradle.properties` by `processResources`)
+- Per-player state: mutable `AbilityData` lives in a Forge **capability** (`data/AbilityCapability`), serialized via its `Codec`; death/end-portal copying happens in `PlayerLifecycleHandler.onClone` via `AbilityCapability.copy` (reviveCaps → loadFrom → invalidateCaps).
+- Client-bound packet handlers are registered through the `DistExecutor.unsafeRunWhenOn` double-lambda in `AbilityNetworking` — never a bare `ClientPayloadHandlers::` method reference; the bytecode verifier would classload client types on the dedicated server and crash it.
 
 ## Conventions
 
@@ -55,8 +57,9 @@ The `jar` task excludes both (see `build.gradle`). They compile with the rest an
 
 ## Build & run
 
-- `./gradlew build` — build the mod jar (output in `build/libs/`).
+- `./gradlew build` — build the mod jar (output in `build/libs/`, reobfuscated via `reobfJar`).
 - `./gradlew runClient` / `./gradlew runServer` — launch a dev instance.
+- `./gradlew publishMods` — publish to CurseForge/Modrinth + Discord announce (env vars: `CF_TOKEN`, `MODRINTH_TOKEN`, `DISCORD_WEBHOOK_URL`; `PUBLISH_DRY_RUN=true` + `DISCORD_WEBHOOK_TEST_URL` for a dry run). Wrapper is Gradle 8.8 — required by mod-publish-plugin 0.8.x; do not "upgrade" to 9.x (ForgeGradle 6 breaks).
 
 ---
 

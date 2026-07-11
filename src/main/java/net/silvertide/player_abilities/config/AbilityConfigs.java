@@ -4,15 +4,15 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.AddReloadListenerEvent;
-import net.neoforged.neoforge.event.OnDatapackSyncEvent;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.event.AddReloadListenerEvent;
+import net.minecraftforge.event.OnDatapackSyncEvent;
+import net.minecraftforge.event.server.ServerStoppedEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.Ability;
 import net.silvertide.player_abilities.api.AbilityAPI;
@@ -22,6 +22,7 @@ import net.silvertide.player_abilities.api.EffectGrant;
 import net.silvertide.player_abilities.api.PassiveAbility;
 import net.silvertide.player_abilities.api.ActiveAbility;
 import net.silvertide.player_abilities.api.GatedAbility;
+import net.silvertide.player_abilities.network.AbilityNetworking;
 import net.silvertide.player_abilities.network.SyncAbilityConfigsPayload;
 
 import java.util.HashMap;
@@ -31,7 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@EventBusSubscriber(modid = PlayerAbilities.MOD_ID)
+@Mod.EventBusSubscriber(modid = PlayerAbilities.MOD_ID)
 public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
     public static final String DATAPACK_DIRECTORY = "player_abilities";
     private static final AbilityConfigs INSTANCE = new AbilityConfigs();
@@ -51,7 +52,7 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
     protected void apply(Map<ResourceLocation, JsonElement> rawEntries, ResourceManager resourceManager, ProfilerFiller profiler) {
         Map<Ability, AbilityConfig> parsed = new HashMap<>();
         rawEntries.forEach((abilityId, json) -> {
-            Ability ability = AbilityRegistry.ABILITIES.get(abilityId);
+            Ability ability = AbilityRegistry.abilities().getValue(abilityId);
             if (ability == null) {
                 PlayerAbilities.LOGGER.warn("Skipping player_abilities config for unknown ability {}", abilityId);
                 return;
@@ -107,8 +108,11 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
 
     @SubscribeEvent
     public static void onDatapackSync(OnDatapackSyncEvent event) {
+        List<ServerPlayer> relevantPlayers = event.getPlayer() != null
+                ? List.of(event.getPlayer())
+                : List.copyOf(event.getPlayerList().getPlayers());
         SyncAbilityConfigsPayload payload = buildSyncPayload();
-        event.getRelevantPlayers().forEach(player -> PacketDistributor.sendToPlayer(player, payload));
+        relevantPlayers.forEach(player -> AbilityNetworking.sendToPlayer(player, payload));
         Set<Ability> newlyDisabled = pendingNewlyDisabled;
         Set<Ability> newlyEnabled = pendingNewlyEnabled;
         pendingNewlyDisabled = Set.of();
@@ -116,7 +120,7 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
         if (newlyDisabled.isEmpty() && newlyEnabled.isEmpty()) {
             return;
         }
-        event.getRelevantPlayers().forEach(player ->
+        relevantPlayers.forEach(player ->
                 AbilityAPI.applyEnabledTransitions(player, newlyDisabled, newlyEnabled));
     }
 
@@ -129,7 +133,7 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
     public static void replaceFromSync(Map<ResourceLocation, AbilityConfig> configsById) {
         Map<Ability, AbilityConfig> resolved = new HashMap<>();
         configsById.forEach((abilityId, config) -> {
-            Ability ability = AbilityRegistry.ABILITIES.get(abilityId);
+            Ability ability = AbilityRegistry.abilities().getValue(abilityId);
             if (ability != null) {
                 resolved.put(ability, config);
             }

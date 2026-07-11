@@ -1,17 +1,12 @@
 package net.silvertide.player_abilities.network;
 
-import io.netty.buffer.ByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.silvertide.player_abilities.PlayerAbilities;
+import net.minecraft.network.FriendlyByteBuf;
 
-public record UseAbilityPayload() implements CustomPacketPayload {
-    public static final UseAbilityPayload INSTANCE = new UseAbilityPayload();
-    public static final Type<UseAbilityPayload> TYPE = new Type<>(PlayerAbilities.id("use_ability"));
-    public static final StreamCodec<ByteBuf, UseAbilityPayload> STREAM_CODEC = StreamCodec.unit(INSTANCE);
+public record UseAbilityPayload() {
+    public void encode(FriendlyByteBuf buf) {
+    }
 
-    @Override
-    public Type<? extends CustomPacketPayload> type() {
-        return TYPE;
+    public static UseAbilityPayload decode(FriendlyByteBuf buf) {
+        return new UseAbilityPayload();
     }
 }

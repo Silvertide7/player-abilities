@@ -1,10 +1,11 @@
 package net.silvertide.player_abilities.api.event;
 
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.ICancellableEvent;
+import net.minecraftforge.eventbus.api.Cancelable;
 import net.silvertide.player_abilities.api.GatedAbility;
 
-public class AbilityPerformEvent extends AbilityEvent implements ICancellableEvent {
+@Cancelable
+public class AbilityPerformEvent extends AbilityEvent {
     public AbilityPerformEvent(ServerPlayer player, GatedAbility ability, int level) {
         super(player, ability, level);
     }

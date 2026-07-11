@@ -4,8 +4,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.OnDatapackSyncEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.OnDatapackSyncEvent;
 import net.puffish.skillsmod.api.Category;
 import net.puffish.skillsmod.api.Skill;
 import net.puffish.skillsmod.api.SkillsAPI;
@@ -31,14 +31,14 @@ public final class PuffishSkillsCompat {
     }
 
     public static void init() {
-        NeoForge.EVENT_BUS.addListener(PuffishSkillsCompat::onDatapackSync);
+        MinecraftForge.EVENT_BUS.addListener(PuffishSkillsCompat::onDatapackSync);
         SkillsAPI.registerSkillUnlockEvent(PuffishSkillsCompat::onSkillChanged);
         SkillsAPI.registerSkillLockEvent(PuffishSkillsCompat::onSkillChanged);
     }
 
     private static void onSkillChanged(ServerPlayer player, ResourceLocation category, String skill) {
         SkillKey changedKey = new SkillKey(category, skill);
-        for (Ability ability : AbilityRegistry.ABILITIES) {
+        for (Ability ability : AbilityRegistry.abilities()) {
             for (AbilityConfig.PuffishGrant grant : AbilityConfigs.puffishGrants(ability)) {
                 if (new SkillKey(grant.category(), grant.skill()).equals(changedKey)) {
                     reconcile(player);
@@ -49,7 +49,11 @@ public final class PuffishSkillsCompat {
     }
 
     private static void onDatapackSync(OnDatapackSyncEvent event) {
-        event.getRelevantPlayers().forEach(PuffishSkillsCompat::scheduleReconcile);
+        if (event.getPlayer() != null) {
+            scheduleReconcile(event.getPlayer());
+        } else {
+            event.getPlayerList().getPlayers().forEach(PuffishSkillsCompat::scheduleReconcile);
+        }
     }
 
     private static void scheduleReconcile(ServerPlayer player) {
@@ -66,7 +70,7 @@ public final class PuffishSkillsCompat {
 
     private static void reconcile(ServerPlayer player) {
         Map<ResourceLocation, LeveledAbility> expectedBySource = new HashMap<>();
-        AbilityRegistry.ABILITIES.forEach(ability -> {
+        AbilityRegistry.abilities().forEach(ability -> {
             for (AbilityConfig.PuffishGrant grant : AbilityConfigs.puffishGrants(ability)) {
                 if (hasUnlocked(player, new SkillKey(grant.category(), grant.skill()))) {
                     expectedBySource.merge(sourceFor(grant, ability),

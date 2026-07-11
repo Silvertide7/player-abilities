@@ -14,16 +14,16 @@ import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.Ability;
 import net.silvertide.player_abilities.api.AbilityAPI;
 import net.silvertide.player_abilities.api.AbilityRegistry;
 import net.silvertide.player_abilities.config.AbilityConfigs;
 
-@EventBusSubscriber(modid = PlayerAbilities.MOD_ID)
+@Mod.EventBusSubscriber(modid = PlayerAbilities.MOD_ID)
 public final class AbilityCommands {
     public static final ResourceLocation DEFAULT_COMMAND_SOURCE = PlayerAbilities.id("command");
 
@@ -31,7 +31,7 @@ public final class AbilityCommands {
             new DynamicCommandExceptionType(abilityId -> Component.literal("Unknown ability: " + abilityId));
 
     private static final SuggestionProvider<CommandSourceStack> ABILITY_SUGGESTIONS =
-            (context, builder) -> SharedSuggestionProvider.suggestResource(AbilityRegistry.ABILITIES.keySet(), builder);
+            (context, builder) -> SharedSuggestionProvider.suggestResource(AbilityRegistry.abilities().getKeys(), builder);
 
     private AbilityCommands() {
     }
@@ -88,7 +88,7 @@ public final class AbilityCommands {
 
     private static Ability resolveAbility(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         ResourceLocation abilityId = ResourceLocationArgument.getId(context, "ability");
-        Ability ability = AbilityRegistry.ABILITIES.get(abilityId);
+        Ability ability = AbilityRegistry.abilities().getValue(abilityId);
         if (ability == null) {
             throw UNKNOWN_ABILITY.create(abilityId);
         }

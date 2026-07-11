@@ -13,7 +13,7 @@ public final class SwiftStepAbility extends PassiveAbility {
     @Override
     public List<AttributeGrant> getAttributeGrants(int level) {
         return List.of(new AttributeGrant(Attributes.MOVEMENT_SPEED,
-                SPEED_BONUS_PER_LEVEL * level, AttributeModifier.Operation.ADD_MULTIPLIED_BASE));
+                SPEED_BONUS_PER_LEVEL * level, AttributeModifier.Operation.MULTIPLY_BASE));
     }
 
     @Override

@@ -1,9 +1,9 @@
 package net.silvertide.player_abilities.config;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.core.Holder;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -51,12 +51,25 @@ public record AbilityConfig(Optional<Boolean> enabled,
         ).apply(instance, PuffishGrant::new));
     }
 
-    public record AttributeGrantConfig(Holder<Attribute> attribute, LeveledValue<Double> amount,
+    public static final Codec<AttributeModifier.Operation> OPERATION_CODEC = Codec.STRING.comapFlatMap(
+            name -> switch (name) {
+                case "add_value", "addition" -> DataResult.success(AttributeModifier.Operation.ADDITION);
+                case "add_multiplied_base", "multiply_base" -> DataResult.success(AttributeModifier.Operation.MULTIPLY_BASE);
+                case "add_multiplied_total", "multiply_total" -> DataResult.success(AttributeModifier.Operation.MULTIPLY_TOTAL);
+                default -> DataResult.error(() -> "Unknown attribute modifier operation " + name);
+            },
+            operation -> switch (operation) {
+                case ADDITION -> "add_value";
+                case MULTIPLY_BASE -> "add_multiplied_base";
+                case MULTIPLY_TOTAL -> "add_multiplied_total";
+            });
+
+    public record AttributeGrantConfig(Attribute attribute, LeveledValue<Double> amount,
                                        AttributeModifier.Operation operation) {
         public static final Codec<AttributeGrantConfig> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                BuiltInRegistries.ATTRIBUTE.holderByNameCodec().fieldOf("attribute").forGetter(AttributeGrantConfig::attribute),
+                ForgeRegistries.ATTRIBUTES.getCodec().fieldOf("attribute").forGetter(AttributeGrantConfig::attribute),
                 LeveledValue.codec(Codec.DOUBLE).fieldOf("amount").forGetter(AttributeGrantConfig::amount),
-                AttributeModifier.Operation.CODEC.fieldOf("operation").forGetter(AttributeGrantConfig::operation)
+                OPERATION_CODEC.fieldOf("operation").forGetter(AttributeGrantConfig::operation)
         ).apply(instance, AttributeGrantConfig::new));
 
         public AttributeGrant resolve(int level) {
@@ -64,12 +77,12 @@ public record AbilityConfig(Optional<Boolean> enabled,
         }
     }
 
-    public record EffectGrantConfig(Holder<MobEffect> effect, LeveledValue<Integer> durationTicks,
+    public record EffectGrantConfig(MobEffect effect, LeveledValue<Integer> durationTicks,
                                     LeveledValue<Integer> amplifier, boolean showParticles, boolean showIcon) {
         private static final LeveledValue<Integer> NO_AMPLIFIER = new LeveledValue<>(List.of(0));
 
         public static final Codec<EffectGrantConfig> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                BuiltInRegistries.MOB_EFFECT.holderByNameCodec().fieldOf("effect").forGetter(EffectGrantConfig::effect),
+                ForgeRegistries.MOB_EFFECTS.getCodec().fieldOf("effect").forGetter(EffectGrantConfig::effect),
                 LeveledValue.codec(Codec.INT).fieldOf("duration_ticks").forGetter(EffectGrantConfig::durationTicks),
                 LeveledValue.codec(Codec.INT).optionalFieldOf("amplifier", NO_AMPLIFIER).forGetter(EffectGrantConfig::amplifier),
                 Codec.BOOL.optionalFieldOf("show_particles", true).forGetter(EffectGrantConfig::showParticles),

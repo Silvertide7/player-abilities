@@ -1,23 +1,23 @@
 package net.silvertide.player_abilities.client;
 
-import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
+import net.minecraftforge.client.gui.overlay.ForgeGui;
+import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.Ability;
 import net.silvertide.player_abilities.api.ActiveAbility;
 import net.silvertide.player_abilities.api.Cooldown;
 import net.silvertide.player_abilities.config.AbilityClientConfig;
 import net.silvertide.player_abilities.config.AbilityConfigs;
-import net.silvertide.player_abilities.data.AbilityAttachments;
+import net.silvertide.player_abilities.data.AbilityCapability;
 import net.silvertide.player_abilities.data.AbilityData;
 import net.silvertide.player_abilities.data.ActiveUse;
 import net.silvertide.player_abilities.data.ActiveEffect;
@@ -28,8 +28,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
-@EventBusSubscriber(modid = PlayerAbilities.MOD_ID, value = Dist.CLIENT)
-public final class AbilityHudOverlay implements LayeredDraw.Layer {
+@Mod.EventBusSubscriber(modid = PlayerAbilities.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
+public final class AbilityHudOverlay implements IGuiOverlay {
     private static final int MARGIN = 4;
     private static final int CELL_SIZE = 22;
     private static final int ICON_SIZE = 20;
@@ -72,18 +72,18 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
     }
 
     @SubscribeEvent
-    public static void onRegisterGuiLayers(RegisterGuiLayersEvent event) {
-        event.registerAboveAll(PlayerAbilities.id("ability_hud"), new AbilityHudOverlay());
+    public static void onRegisterGuiLayers(RegisterGuiOverlaysEvent event) {
+        event.registerAboveAll("ability_hud", new AbilityHudOverlay());
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
+    public void render(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int screenWidth, int screenHeight) {
         Minecraft minecraft = Minecraft.getInstance();
         LocalPlayer player = minecraft.player;
         if (player == null || minecraft.options.hideGui) {
             return;
         }
-        AbilityData abilityData = player.getData(AbilityAttachments.ABILITY_DATA);
+        AbilityData abilityData = AbilityCapability.get(player);
         ActiveAbility ability = abilityData.getSelected().orElse(null);
 
         abilityData.getActiveUse().ifPresent(use -> renderUseBar(guiGraphics, minecraft, use));

@@ -1,19 +1,14 @@
 package net.silvertide.player_abilities.network;
 
-import io.netty.buffer.ByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
-import net.silvertide.player_abilities.PlayerAbilities;
 
-public record SelectAbilityPayload(ResourceLocation abilityId) implements CustomPacketPayload {
-    public static final Type<SelectAbilityPayload> TYPE = new Type<>(PlayerAbilities.id("select_ability"));
-    public static final StreamCodec<ByteBuf, SelectAbilityPayload> STREAM_CODEC = StreamCodec.composite(
-            ResourceLocation.STREAM_CODEC, SelectAbilityPayload::abilityId,
-            SelectAbilityPayload::new);
+public record SelectAbilityPayload(ResourceLocation abilityId) {
+    public void encode(FriendlyByteBuf buf) {
+        buf.writeResourceLocation(abilityId);
+    }
 
-    @Override
-    public Type<? extends CustomPacketPayload> type() {
-        return TYPE;
+    public static SelectAbilityPayload decode(FriendlyByteBuf buf) {
+        return new SelectAbilityPayload(buf.readResourceLocation());
     }
 }

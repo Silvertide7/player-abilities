@@ -1,28 +1,79 @@
 package net.silvertide.player_abilities.network;
 
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
-import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.network.NetworkDirection;
+import net.minecraftforge.network.NetworkRegistry;
+import net.minecraftforge.network.PacketDistributor;
+import net.minecraftforge.network.simple.SimpleChannel;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 import net.silvertide.player_abilities.PlayerAbilities;
 
-@EventBusSubscriber(modid = PlayerAbilities.MOD_ID)
 public final class AbilityNetworking {
+    private static final String PROTOCOL_VERSION = "1";
+
+    private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
+            new ResourceLocation(PlayerAbilities.MOD_ID, "main"),
+            () -> PROTOCOL_VERSION,
+            PROTOCOL_VERSION::equals,
+            PROTOCOL_VERSION::equals);
+
     private AbilityNetworking() {
     }
 
-    @SubscribeEvent
-    public static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(PlayerAbilities.MOD_ID).versioned("1");
-        registrar.playToServer(UseAbilityPayload.TYPE, UseAbilityPayload.STREAM_CODEC, ServerPayloadHandlers::handleUse);
-        registrar.playToServer(SelectAbilityPayload.TYPE, SelectAbilityPayload.STREAM_CODEC, ServerPayloadHandlers::handleSelect);
-        registrar.playToClient(SyncAbilitiesPayload.TYPE, SyncAbilitiesPayload.STREAM_CODEC, ClientPayloadHandlers::handleSyncAbilities);
-        registrar.playToServer(TogglePassivePayload.TYPE, TogglePassivePayload.STREAM_CODEC, ServerPayloadHandlers::handleTogglePassive);
-        registrar.playToClient(SyncCooldownPayload.TYPE, SyncCooldownPayload.STREAM_CODEC, ClientPayloadHandlers::handleSyncCooldown);
-        registrar.playToClient(SyncUseStatePayload.TYPE, SyncUseStatePayload.STREAM_CODEC, ClientPayloadHandlers::handleSyncUseState);
-        registrar.playToClient(SyncEffectsPayload.TYPE, SyncEffectsPayload.STREAM_CODEC, ClientPayloadHandlers::handleSyncEffects);
-        registrar.playToClient(SyncRequirementPayload.TYPE, SyncRequirementPayload.STREAM_CODEC, ClientPayloadHandlers::handleSyncRequirement);
-        registrar.playToClient(TriggeredActivatedPayload.TYPE, TriggeredActivatedPayload.STREAM_CODEC, ClientPayloadHandlers::handleTriggeredActivated);
-        registrar.playToClient(SyncAbilityConfigsPayload.TYPE, SyncAbilityConfigsPayload.STREAM_CODEC, ClientPayloadHandlers::handleSyncAbilityConfigs);
+    public static void register() {
+        int id = 0;
+
+        CHANNEL.messageBuilder(UseAbilityPayload.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(UseAbilityPayload::encode).decoder(UseAbilityPayload::decode)
+                .consumerMainThread(ServerPayloadHandlers::handleUse).add();
+        CHANNEL.messageBuilder(SelectAbilityPayload.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(SelectAbilityPayload::encode).decoder(SelectAbilityPayload::decode)
+                .consumerMainThread(ServerPayloadHandlers::handleSelect).add();
+        CHANNEL.messageBuilder(TogglePassivePayload.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(TogglePassivePayload::encode).decoder(TogglePassivePayload::decode)
+                .consumerMainThread(ServerPayloadHandlers::handleTogglePassive).add();
+
+        CHANNEL.messageBuilder(SyncAbilitiesPayload.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SyncAbilitiesPayload::encode).decoder(SyncAbilitiesPayload::decode)
+                .consumerMainThread((msg, ctx) ->
+                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncAbilities(msg, ctx))).add();
+        CHANNEL.messageBuilder(SyncCooldownPayload.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SyncCooldownPayload::encode).decoder(SyncCooldownPayload::decode)
+                .consumerMainThread((msg, ctx) ->
+                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncCooldown(msg, ctx))).add();
+        CHANNEL.messageBuilder(SyncUseStatePayload.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SyncUseStatePayload::encode).decoder(SyncUseStatePayload::decode)
+                .consumerMainThread((msg, ctx) ->
+                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncUseState(msg, ctx))).add();
+        CHANNEL.messageBuilder(SyncEffectsPayload.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SyncEffectsPayload::encode).decoder(SyncEffectsPayload::decode)
+                .consumerMainThread((msg, ctx) ->
+                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncEffects(msg, ctx))).add();
+        CHANNEL.messageBuilder(SyncRequirementPayload.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SyncRequirementPayload::encode).decoder(SyncRequirementPayload::decode)
+                .consumerMainThread((msg, ctx) ->
+                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncRequirement(msg, ctx))).add();
+        CHANNEL.messageBuilder(TriggeredActivatedPayload.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(TriggeredActivatedPayload::encode).decoder(TriggeredActivatedPayload::decode)
+                .consumerMainThread((msg, ctx) ->
+                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleTriggeredActivated(msg, ctx))).add();
+        CHANNEL.messageBuilder(SyncAbilityConfigsPayload.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SyncAbilityConfigsPayload::encode).decoder(SyncAbilityConfigsPayload::decode)
+                .consumerMainThread((msg, ctx) ->
+                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncAbilityConfigs(msg, ctx))).add();
+    }
+
+    public static void sendToPlayer(ServerPlayer player, Object message) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
+    }
+
+    public static void sendToPlayersTrackingEntityAndSelf(ServerPlayer player, Object message) {
+        CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player), message);
+    }
+
+    public static void sendToServer(Object message) {
+        CHANNEL.sendToServer(message);
     }
 }

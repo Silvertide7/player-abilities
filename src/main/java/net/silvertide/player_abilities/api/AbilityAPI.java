@@ -8,7 +8,8 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.neoforge.common.NeoForge;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.registries.ForgeRegistries;
 import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.event.AbilityInterruptedEvent;
 import net.silvertide.player_abilities.api.event.AbilityGrantedEvent;
@@ -16,7 +17,7 @@ import net.silvertide.player_abilities.api.event.AbilityPerformEvent;
 import net.silvertide.player_abilities.api.event.AbilityPerformedEvent;
 import net.silvertide.player_abilities.api.event.AbilityRevokedEvent;
 import net.silvertide.player_abilities.config.AbilityConfigs;
-import net.silvertide.player_abilities.data.AbilityAttachments;
+import net.silvertide.player_abilities.data.AbilityCapability;
 import net.silvertide.player_abilities.data.AbilityData;
 import net.silvertide.player_abilities.data.ActiveUse;
 import net.silvertide.player_abilities.data.ActiveEffect;
@@ -31,6 +32,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 public final class AbilityAPI {
@@ -60,7 +62,7 @@ public final class AbilityAPI {
         int effectiveAfter = abilityData.getEffectiveLevel(ability);
         applyEffectiveLevelChange(player, abilityData, ability, effectiveBefore, effectiveAfter);
         if (effectiveBefore == 0 && effectiveAfter > 0) {
-            NeoForge.EVENT_BUS.post(new AbilityGrantedEvent(player, ability, effectiveAfter, source));
+            MinecraftForge.EVENT_BUS.post(new AbilityGrantedEvent(player, ability, effectiveAfter, source));
         }
         return true;
     }
@@ -74,7 +76,7 @@ public final class AbilityAPI {
         int effectiveAfter = abilityData.getEffectiveLevel(ability);
         applyEffectiveLevelChange(player, abilityData, ability, effectiveBefore, effectiveAfter);
         if (effectiveBefore > 0 && effectiveAfter == 0) {
-            NeoForge.EVENT_BUS.post(new AbilityRevokedEvent(player, ability, effectiveBefore, source));
+            MinecraftForge.EVENT_BUS.post(new AbilityRevokedEvent(player, ability, effectiveBefore, source));
         }
         return true;
     }
@@ -156,7 +158,7 @@ public final class AbilityAPI {
                     : Component.translatable("message.player_abilities.cannot_use", abilityName), true);
             return false;
         }
-        if (NeoForge.EVENT_BUS.post(new AbilityPerformEvent(player, ability, level)).isCanceled()) {
+        if (MinecraftForge.EVENT_BUS.post(new AbilityPerformEvent(player, ability, level))) {
             return false;
         }
         if (!abilityData.isGranted(ability)) {
@@ -169,7 +171,7 @@ public final class AbilityAPI {
                 applyCompletionCooldown(player, abilityData, ability, level);
             }
             resetRequirementProgress(player, abilityData, ability, level);
-            NeoForge.EVENT_BUS.post(new AbilityPerformedEvent(player, ability, level));
+            MinecraftForge.EVENT_BUS.post(new AbilityPerformedEvent(player, ability, level));
             return true;
         }
         int useTicks = AbilityConfigs.useTicks(ability, level);
@@ -240,14 +242,14 @@ public final class AbilityAPI {
         abilityData.clearUse();
         AbilitySync.syncUseState(player, null, 0, 0);
         if (cancelled) {
-            NeoForge.EVENT_BUS.post(new AbilityInterruptedEvent(player, use.getAbility(), use.getLevel()));
+            MinecraftForge.EVENT_BUS.post(new AbilityInterruptedEvent(player, use.getAbility(), use.getLevel()));
         } else {
             applyDeclaredEffects(player, use.getAbility(), use.getLevel());
             if (!abilityData.isOnCooldown(use.getAbility())) {
                 applyCompletionCooldown(player, abilityData, use.getAbility(), use.getLevel());
             }
             resetRequirementProgress(player, abilityData, use.getAbility(), use.getLevel());
-            NeoForge.EVENT_BUS.post(new AbilityPerformedEvent(player, use.getAbility(), use.getLevel()));
+            MinecraftForge.EVENT_BUS.post(new AbilityPerformedEvent(player, use.getAbility(), use.getLevel()));
         }
     }
 
@@ -417,7 +419,7 @@ public final class AbilityAPI {
                 AbilityConfigs.damageTakenRequirement(ability, level))) {
             return false;
         }
-        if (NeoForge.EVENT_BUS.post(new AbilityPerformEvent(player, ability, level)).isCanceled()) {
+        if (MinecraftForge.EVENT_BUS.post(new AbilityPerformEvent(player, ability, level))) {
             return false;
         }
         if (!abilityData.isGranted(ability)) {
@@ -431,7 +433,7 @@ public final class AbilityAPI {
         resetRequirementProgress(player, abilityData, ability, level);
         int cooldownTicks = abilityData.getCooldown(ability).map(Cooldown::totalTicks).orElse(0);
         AbilitySync.syncTriggered(player, ability, cooldownTicks);
-        NeoForge.EVENT_BUS.post(new AbilityPerformedEvent(player, ability, level));
+        MinecraftForge.EVENT_BUS.post(new AbilityPerformedEvent(player, ability, level));
         return true;
     }
 
@@ -532,10 +534,13 @@ public final class AbilityAPI {
             AttributeInstance attributeInstance = player.getAttribute(attributeGrant.attribute());
             if (attributeInstance == null) {
                 PlayerAbilities.LOGGER.warn("Passive {} declares a grant for attribute {} that players do not have",
-                        passive.getId(), attributeGrant.attribute().getRegisteredName());
+                        passive.getId(), ForgeRegistries.ATTRIBUTES.getKey(attributeGrant.attribute()));
             } else {
-                attributeInstance.addOrReplacePermanentModifier(new AttributeModifier(
-                        attributeModifierId(passive, attributeGrant), attributeGrant.amount(), attributeGrant.operation()));
+                String modifierName = attributeModifierName(passive, attributeGrant);
+                UUID modifierUuid = attributeModifierUuid(modifierName);
+                attributeInstance.removeModifier(modifierUuid);
+                attributeInstance.addPermanentModifier(new AttributeModifier(
+                        modifierUuid, modifierName, attributeGrant.amount(), attributeGrant.operation()));
             }
         }
     }
@@ -546,17 +551,30 @@ public final class AbilityAPI {
         for (AttributeGrant attributeGrant : declaredEverywhere) {
             AttributeInstance attributeInstance = player.getAttribute(attributeGrant.attribute());
             if (attributeInstance != null) {
-                attributeInstance.removeModifier(attributeModifierId(passive, attributeGrant));
+                attributeInstance.removeModifier(attributeModifierUuid(attributeModifierName(passive, attributeGrant)));
             }
         }
     }
 
-    private static ResourceLocation attributeModifierId(PassiveAbility passive, AttributeGrant attributeGrant) {
+    private static String attributeModifierName(PassiveAbility passive, AttributeGrant attributeGrant) {
         ResourceLocation abilityId = passive.getId();
-        ResourceLocation attributeId = attributeGrant.attribute().unwrapKey().orElseThrow().location();
-        return ResourceLocation.fromNamespaceAndPath(abilityId.getNamespace(),
-                "passive/" + abilityId.getPath() + "/" + attributeId.getNamespace() + "." + attributeId.getPath()
-                        + "/" + attributeGrant.operation().getSerializedName());
+        ResourceLocation attributeId = java.util.Objects.requireNonNull(
+                ForgeRegistries.ATTRIBUTES.getKey(attributeGrant.attribute()));
+        return abilityId.getNamespace() + ":passive/" + abilityId.getPath()
+                + "/" + attributeId.getNamespace() + "." + attributeId.getPath()
+                + "/" + operationName(attributeGrant.operation());
+    }
+
+    private static UUID attributeModifierUuid(String modifierName) {
+        return UUID.nameUUIDFromBytes(modifierName.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    private static String operationName(AttributeModifier.Operation operation) {
+        return switch (operation) {
+            case ADDITION -> "add_value";
+            case MULTIPLY_BASE -> "add_multiplied_base";
+            case MULTIPLY_TOTAL -> "add_multiplied_total";
+        };
     }
 
     private static void applyCompletionCooldown(ServerPlayer player, AbilityData abilityData, GatedAbility ability, int level) {
@@ -585,7 +603,7 @@ public final class AbilityAPI {
     }
 
     private static int applyCooldownAttribute(ServerPlayer player, int baseTicks) {
-        double cooldownMultiplier = Math.max(0.0, 2.0 - player.getAttributeValue(AbilityAttributes.ABILITY_COOLDOWN));
+        double cooldownMultiplier = Math.max(0.0, 2.0 - player.getAttributeValue(AbilityAttributes.ABILITY_COOLDOWN.get()));
         return (int) (baseTicks * cooldownMultiplier);
     }
 
@@ -603,7 +621,7 @@ public final class AbilityAPI {
     }
 
     public static double getAbilityPower(ServerPlayer player) {
-        return player.getAttributeValue(AbilityAttributes.ABILITY_POWER);
+        return player.getAttributeValue(AbilityAttributes.ABILITY_POWER.get());
     }
 
     public static int getLevel(Player player, Ability ability) {
@@ -631,6 +649,6 @@ public final class AbilityAPI {
     }
 
     private static AbilityData getData(Player player) {
-        return player.getData(AbilityAttachments.ABILITY_DATA);
+        return AbilityCapability.get(player);
     }
 }

@@ -1,23 +1,23 @@
 package net.silvertide.player_abilities.api;
 
-import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.RangedAttribute;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.event.entity.EntityAttributeModificationEvent;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredRegister;
+import net.minecraftforge.event.entity.EntityAttributeModificationEvent;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegistryObject;
 import net.silvertide.player_abilities.PlayerAbilities;
 
 public final class AbilityAttributes {
     private static final DeferredRegister<Attribute> ATTRIBUTES =
-            DeferredRegister.create(Registries.ATTRIBUTE, PlayerAbilities.MOD_ID);
+            DeferredRegister.create(ForgeRegistries.ATTRIBUTES, PlayerAbilities.MOD_ID);
 
-    public static final DeferredHolder<Attribute, Attribute> ABILITY_COOLDOWN = ATTRIBUTES.register("ability_cooldown",
+    public static final RegistryObject<Attribute> ABILITY_COOLDOWN = ATTRIBUTES.register("ability_cooldown",
             () -> new RangedAttribute("attribute.player_abilities.ability_cooldown", 1.0, 0.0, 10.0).setSyncable(true));
 
-    public static final DeferredHolder<Attribute, Attribute> ABILITY_POWER = ATTRIBUTES.register("ability_power",
+    public static final RegistryObject<Attribute> ABILITY_POWER = ATTRIBUTES.register("ability_power",
             () -> new RangedAttribute("attribute.player_abilities.ability_power", 1.0, 0.0, 10.0).setSyncable(true));
 
     private AbilityAttributes() {
@@ -29,7 +29,7 @@ public final class AbilityAttributes {
     }
 
     private static void modifyEntityAttributes(EntityAttributeModificationEvent event) {
-        event.add(EntityType.PLAYER, ABILITY_COOLDOWN);
-        event.add(EntityType.PLAYER, ABILITY_POWER);
+        event.add(EntityType.PLAYER, ABILITY_COOLDOWN.get());
+        event.add(EntityType.PLAYER, ABILITY_POWER.get());
     }
 }

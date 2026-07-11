@@ -2,9 +2,7 @@ package net.silvertide.player_abilities.data;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import io.netty.buffer.ByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.FriendlyByteBuf;
 import org.jetbrains.annotations.Nullable;
 
 public final class ActiveEffect implements net.silvertide.player_abilities.api.AbilityEffect {
@@ -13,11 +11,15 @@ public final class ActiveEffect implements net.silvertide.player_abilities.api.A
             Codec.INT.fieldOf("total").forGetter(ActiveEffect::getTotalTicks),
             Codec.INT.fieldOf("remaining").forGetter(ActiveEffect::getRemainingTicks)
     ).apply(instance, ActiveEffect::new));
-    public static final StreamCodec<ByteBuf, ActiveEffect> STREAM_CODEC = StreamCodec.composite(
-            ByteBufCodecs.VAR_INT, ActiveEffect::getLevel,
-            ByteBufCodecs.VAR_INT, ActiveEffect::getTotalTicks,
-            ByteBufCodecs.VAR_INT, ActiveEffect::getRemainingTicks,
-            ActiveEffect::new);
+    public void encode(FriendlyByteBuf buf) {
+        buf.writeVarInt(level);
+        buf.writeVarInt(totalTicks);
+        buf.writeVarInt(remainingTicks);
+    }
+
+    public static ActiveEffect decode(FriendlyByteBuf buf) {
+        return new ActiveEffect(buf.readVarInt(), buf.readVarInt(), buf.readVarInt());
+    }
 
     private final int level;
     private final int totalTicks;
