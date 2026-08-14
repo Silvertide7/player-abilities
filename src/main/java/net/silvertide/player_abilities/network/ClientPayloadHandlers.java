@@ -72,6 +72,10 @@ public final class ClientPayloadHandlers {
                 AbilityNotifications.onTriggeredActivated(ability, payload.cooldownTicks()));
     }
 
+    public static void handleAbilityReady(AbilityReadyPayload payload, IPayloadContext context) {
+        AbilityRegistry.getGated(payload.abilityId()).ifPresent(AbilityNotifications::onAbilityReady);
+    }
+
     public static void handleSyncRequirement(SyncRequirementPayload payload, IPayloadContext context) {
         AbilityRegistry.getGated(payload.abilityId()).ifPresent(active -> {
             var abilityData = context.player().getData(AbilityAttachments.ABILITY_DATA);

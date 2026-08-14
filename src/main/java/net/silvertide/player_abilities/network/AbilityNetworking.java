@@ -13,7 +13,7 @@ public final class AbilityNetworking {
 
     @SubscribeEvent
     public static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(PlayerAbilities.MOD_ID).versioned("1");
+        PayloadRegistrar registrar = event.registrar(PlayerAbilities.MOD_ID).versioned("2");
         registrar.playToServer(UseAbilityPayload.TYPE, UseAbilityPayload.STREAM_CODEC, ServerPayloadHandlers::handleUse);
         registrar.playToServer(SelectAbilityPayload.TYPE, SelectAbilityPayload.STREAM_CODEC, ServerPayloadHandlers::handleSelect);
         registrar.playToClient(SyncAbilitiesPayload.TYPE, SyncAbilitiesPayload.STREAM_CODEC, ClientPayloadHandlers::handleSyncAbilities);
@@ -24,5 +24,6 @@ public final class AbilityNetworking {
         registrar.playToClient(SyncRequirementPayload.TYPE, SyncRequirementPayload.STREAM_CODEC, ClientPayloadHandlers::handleSyncRequirement);
         registrar.playToClient(TriggeredActivatedPayload.TYPE, TriggeredActivatedPayload.STREAM_CODEC, ClientPayloadHandlers::handleTriggeredActivated);
         registrar.playToClient(SyncAbilityConfigsPayload.TYPE, SyncAbilityConfigsPayload.STREAM_CODEC, ClientPayloadHandlers::handleSyncAbilityConfigs);
+        registrar.playToClient(AbilityReadyPayload.TYPE, AbilityReadyPayload.STREAM_CODEC, ClientPayloadHandlers::handleAbilityReady);
     }
 }

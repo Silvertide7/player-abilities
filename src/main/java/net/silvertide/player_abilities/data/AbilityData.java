@@ -15,10 +15,12 @@ import net.silvertide.player_abilities.api.TriggeredAbility;
 import net.silvertide.player_abilities.config.AbilityConfigs;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -50,7 +52,9 @@ public class AbilityData {
     private final Map<ResourceLocation, Map<Ability, Integer>> grants = new HashMap<>();
     private final Map<GatedAbility, Cooldown> cooldowns = new HashMap<>();
     private final Map<Ability, ActiveEffect> activeEffects = new HashMap<>();
+    private final Map<Ability, ActiveEffect> activeEffectsView = Collections.unmodifiableMap(activeEffects);
     private final Map<GatedAbility, RequirementProgress> requirementProgress = new HashMap<>();
+    private final Map<GatedAbility, RequirementProgress> requirementProgressView = Collections.unmodifiableMap(requirementProgress);
     private final Set<PassiveAbility> disabledPassives = new HashSet<>();
     @Nullable
     private List<TriggeredGrant> cachedTriggeredGrants;
@@ -246,7 +250,7 @@ public class AbilityData {
     }
 
     public Map<Ability, ActiveEffect> getActiveEffects() {
-        return Collections.unmodifiableMap(activeEffects);
+        return activeEffectsView;
     }
 
     public boolean isCurrentEffect(Ability ability, ActiveEffect effect) {
@@ -279,7 +283,7 @@ public class AbilityData {
     }
 
     public Map<GatedAbility, RequirementProgress> getRequirementProgressMap() {
-        return Collections.unmodifiableMap(requirementProgress);
+        return requirementProgressView;
     }
 
     public boolean hasUnmetRequirements(GatedAbility ability) {
@@ -379,12 +383,30 @@ public class AbilityData {
         return Map.copyOf(cooldowns);
     }
 
-    public void tickCooldowns() {
+    public List<GatedAbility> tickCooldowns() {
         if (cooldowns.isEmpty()) {
-            return;
+            return List.of();
         }
-        cooldowns.replaceAll((ability, cooldown) -> cooldown.decremented());
-        cooldowns.values().removeIf(Cooldown::isExpired);
+        List<GatedAbility> expired = null;
+        Iterator<Map.Entry<GatedAbility, Cooldown>> entries = cooldowns.entrySet().iterator();
+        while (entries.hasNext()) {
+            Map.Entry<GatedAbility, Cooldown> entry = entries.next();
+            Cooldown ticked = entry.getValue().decremented();
+            if (ticked.isExpired()) {
+                if (expired == null) {
+                    expired = new ArrayList<>();
+                }
+                expired.add(entry.getKey());
+                entries.remove();
+            } else {
+                entry.setValue(ticked);
+            }
+        }
+        if (expired == null) {
+            return List.of();
+        }
+        expired.sort(Comparator.comparing(Ability::getId));
+        return expired;
     }
 
     public void replaceSyncedState(Map<Ability, Integer> grantedLevels, Set<PassiveAbility> newDisabledPassives,
