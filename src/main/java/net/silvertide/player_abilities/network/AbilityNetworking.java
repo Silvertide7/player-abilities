@@ -11,7 +11,7 @@ import net.minecraftforge.fml.DistExecutor;
 import net.silvertide.player_abilities.PlayerAbilities;
 
 public final class AbilityNetworking {
-    private static final String PROTOCOL_VERSION = "1";
+    private static final String PROTOCOL_VERSION = "2";
 
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(PlayerAbilities.MOD_ID, "main"),
@@ -63,6 +63,10 @@ public final class AbilityNetworking {
                 .encoder(SyncAbilityConfigsPayload::encode).decoder(SyncAbilityConfigsPayload::decode)
                 .consumerMainThread((msg, ctx) ->
                         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncAbilityConfigs(msg, ctx))).add();
+        CHANNEL.messageBuilder(AbilityReadyPayload.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(AbilityReadyPayload::encode).decoder(AbilityReadyPayload::decode)
+                .consumerMainThread((msg, ctx) ->
+                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleAbilityReady(msg, ctx))).add();
     }
 
     public static void sendToPlayer(ServerPlayer player, Object message) {

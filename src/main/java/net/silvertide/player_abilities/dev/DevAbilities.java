@@ -25,6 +25,14 @@ public final class DevAbilities {
                     new GuardianAngelAbility());
             helper.register(new ResourceLocation(DEV_NAMESPACE, "adrenaline"),
                     new AdrenalineAbility());
+            helper.register(new ResourceLocation(DEV_NAMESPACE, "blood_price"),
+                    new BloodPriceAbility());
+            helper.register(new ResourceLocation(DEV_NAMESPACE, "last_stand"),
+                    new LastStandAbility());
+            helper.register(new ResourceLocation(DEV_NAMESPACE, "steady_hand"),
+                    new SteadyHandAbility());
+            helper.register(new ResourceLocation(DEV_NAMESPACE, "riposte"),
+                    new RiposteAbility());
         });
     }
 }

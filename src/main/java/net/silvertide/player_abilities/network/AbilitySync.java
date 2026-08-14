@@ -53,6 +53,10 @@ public final class AbilitySync {
         AbilityNetworking.sendToPlayer(player, new TriggeredActivatedPayload(ability.getId(), cooldownTicks));
     }
 
+    public static void syncAbilityReady(ServerPlayer player, GatedAbility ability) {
+        AbilityNetworking.sendToPlayer(player, new AbilityReadyPayload(ability.getId()));
+    }
+
     public static void syncAllState(ServerPlayer player) {
         syncAbilities(player);
         syncEffects(player);

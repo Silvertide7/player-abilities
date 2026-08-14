@@ -6,5 +6,14 @@
   "ability.player_abilities_dev.adrenaline": "Adrenaline",
   "ability.player_abilities_dev.guardian_angel.description": "When a blow would kill you, survive it and recover to full health instead.",
   "ability.player_abilities_dev.adrenaline.description": "Taking damage sends adrenaline through your veins, granting Speed I for 10 seconds.",
-  "ability.player_abilities_dev.restful_meditation.description": "Meditate in place to enter a restful trance, restoring health and hunger over time. Moving breaks the trance."
+  "ability.player_abilities_dev.restful_meditation.description": "Meditate in place to enter a restful trance, restoring health and hunger over time. Moving breaks the trance.",
+  "ability.player_abilities_dev.blood_price": "Blood Price",
+  "ability.player_abilities_dev.blood_price.description": "Taking damage grants Strength, but it only recharges once you have taken 10 damage and claimed 2 kills.",
+  "ability.player_abilities_dev.last_stand": "Last Stand",
+  "ability.player_abilities_dev.last_stand.description": "A killing blow leaves you standing at two hearts instead.",
+  "ability.player_abilities_dev.steady_hand": "Steady Hand",
+  "ability.player_abilities_dev.steady_hand.description": "Grants Night Vision, but only while you are crouched on solid ground.",
+  "ability.player_abilities_dev.riposte": "Riposte",
+  "ability.player_abilities_dev.riposte.description": "Blocking a heavy blow with a shield grants Resistance. Light blows do not answer.",
+  "message.player_abilities_dev.steady_hand_needs_footing": "You must be crouched on solid ground."
 }

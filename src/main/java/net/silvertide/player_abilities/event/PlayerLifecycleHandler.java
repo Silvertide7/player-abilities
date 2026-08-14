@@ -153,10 +153,10 @@ public final class PlayerLifecycleHandler {
         }
         Player player = event.player;
         AbilityData abilityData = AbilityCapability.get(player);
-        abilityData.tickCooldowns();
         if (player instanceof ServerPlayer serverPlayer) {
             AbilityAPI.serverTick(serverPlayer);
         } else {
+            abilityData.tickCooldowns();
             abilityData.incrementUseElapsed();
             abilityData.tickEffectsClient();
         }

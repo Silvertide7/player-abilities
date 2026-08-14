@@ -186,8 +186,18 @@ public final class AbilityAPI {
 
     public static void serverTick(ServerPlayer player) {
         AbilityData abilityData = getData(player);
+        for (GatedAbility expired : abilityData.tickCooldowns()) {
+            announceReadyIfUsable(player, abilityData, expired);
+        }
         tickActiveUse(player, abilityData);
         tickEffects(player, abilityData);
+    }
+
+    private static void announceReadyIfUsable(ServerPlayer player, AbilityData abilityData, GatedAbility ability) {
+        if (ability instanceof TriggeredAbility<?> && abilityData.isGranted(ability)
+                && !abilityData.isOnCooldown(ability) && !abilityData.hasUnmetRequirements(ability)) {
+            AbilitySync.syncAbilityReady(player, ability);
+        }
     }
 
     private static void tickActiveUse(ServerPlayer player, AbilityData abilityData) {
@@ -301,6 +311,7 @@ public final class AbilityAPI {
                     AbilityConfigs.damageTakenRequirement(ability, level))) {
                 abilityData.removeRequirementProgress(ability);
                 AbilitySync.syncRequirementProgress(player, ability, null);
+                announceReadyIfUsable(player, abilityData, ability);
             } else if (progress.getKills() != killsBefore || (int) progress.getDamageTaken() != visibleDamageBefore) {
                 AbilitySync.syncRequirementProgress(player, ability, progress);
             }
@@ -602,9 +613,10 @@ public final class AbilityAPI {
             Cooldown cooldown = new Cooldown(adjustedTicks, adjustedTicks);
             abilityData.setCooldown(ability, cooldown);
             AbilitySync.syncCooldown(player, ability, cooldown);
-        } else {
+        } else if (abilityData.isOnCooldown(ability)) {
             abilityData.removeCooldown(ability);
             AbilitySync.syncCooldown(player, ability, new Cooldown(0, 0));
+            announceReadyIfUsable(player, abilityData, ability);
         }
     }
 

@@ -1,0 +1,5 @@
+{
+  "enabled": true,
+  "pmmo_use_requirement": { "skill": "combat", "level": [5, 10, 15] },
+  "max_level": 3
+}

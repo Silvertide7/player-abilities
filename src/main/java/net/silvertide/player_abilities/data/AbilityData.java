@@ -16,10 +16,12 @@ import net.silvertide.player_abilities.config.AbilityConfigs;
 import net.minecraftforge.common.capabilities.AutoRegisterCapability;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -386,12 +388,30 @@ public class AbilityData {
         return Map.copyOf(cooldowns);
     }
 
-    public void tickCooldowns() {
+    public List<GatedAbility> tickCooldowns() {
         if (cooldowns.isEmpty()) {
-            return;
+            return List.of();
         }
-        cooldowns.replaceAll((ability, cooldown) -> cooldown.decremented());
-        cooldowns.values().removeIf(Cooldown::isExpired);
+        List<GatedAbility> expired = null;
+        Iterator<Map.Entry<GatedAbility, Cooldown>> entries = cooldowns.entrySet().iterator();
+        while (entries.hasNext()) {
+            Map.Entry<GatedAbility, Cooldown> entry = entries.next();
+            Cooldown ticked = entry.getValue().decremented();
+            if (ticked.isExpired()) {
+                if (expired == null) {
+                    expired = new ArrayList<>();
+                }
+                expired.add(entry.getKey());
+                entries.remove();
+            } else {
+                entry.setValue(ticked);
+            }
+        }
+        if (expired == null) {
+            return List.of();
+        }
+        expired.sort(Comparator.comparing(Ability::getId));
+        return expired;
     }
 
     void loadFrom(AbilityData other) {

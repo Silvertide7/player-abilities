@@ -85,6 +85,10 @@ public final class ClientPayloadHandlers {
                 AbilityNotifications.onTriggeredActivated(ability, payload.cooldownTicks()));
     }
 
+    public static void handleAbilityReady(AbilityReadyPayload payload, Supplier<NetworkEvent.Context> context) {
+        AbilityRegistry.getGated(payload.abilityId()).ifPresent(AbilityNotifications::onAbilityReady);
+    }
+
     public static void handleSyncRequirement(SyncRequirementPayload payload, Supplier<NetworkEvent.Context> context) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {

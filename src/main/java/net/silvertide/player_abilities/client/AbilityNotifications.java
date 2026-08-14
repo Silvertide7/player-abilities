@@ -50,7 +50,6 @@ public final class AbilityNotifications {
 
     private static final List<Notice> activatedNotices = new ArrayList<>();
     private static final List<Notice> readyNotices = new ArrayList<>();
-    private static final List<GatedAbility> awaitingReady = new ArrayList<>();
 
     private AbilityNotifications() {
     }
@@ -60,9 +59,11 @@ public final class AbilityNotifications {
         Component subtitle = Component.translatable("hud.player_abilities.cooldown_duration",
                 AbilityIcons.formatCooldown(cooldownTicks));
         activatedNotices.add(new Notice(ability, title, subtitle, ACTIVATED_DISPLAY_TICKS));
-        if (cooldownTicks > 0 && !awaitingReady.contains(ability)) {
-            awaitingReady.add(ability);
-        }
+    }
+
+    public static void onAbilityReady(GatedAbility ability) {
+        Component title = Component.translatable("hud.player_abilities.ability_ready", AbilityIcons.name(ability));
+        readyNotices.add(new Notice(ability, title, Component.empty(), READY_DISPLAY_TICKS));
     }
 
     public static List<Notice> activatedNotices() {
@@ -83,18 +84,9 @@ public final class AbilityNotifications {
         }
         tickDown(activatedNotices);
         tickDown(readyNotices);
-        if (awaitingReady.isEmpty()) {
-            return;
-        }
-        AbilityData abilityData = AbilityCapability.get(player);
-        Iterator<GatedAbility> awaiting = awaitingReady.iterator();
-        while (awaiting.hasNext()) {
-            GatedAbility ability = awaiting.next();
-            if (abilityData.getCooldown(ability).isEmpty() && !abilityData.hasUnmetRequirements(ability)) {
-                Component title = Component.translatable("hud.player_abilities.ability_ready", AbilityIcons.name(ability));
-                readyNotices.add(new Notice(ability, title, Component.empty(), READY_DISPLAY_TICKS));
-                awaiting.remove();
-            }
+        if (!readyNotices.isEmpty()) {
+            AbilityData abilityData = AbilityCapability.get(player);
+            readyNotices.removeIf(notice -> !abilityData.isGranted(notice.ability()));
         }
     }
 
@@ -104,9 +96,6 @@ public final class AbilityNotifications {
         }
         if (!readyNotices.isEmpty()) {
             readyNotices.clear();
-        }
-        if (!awaitingReady.isEmpty()) {
-            awaitingReady.clear();
         }
     }
 
