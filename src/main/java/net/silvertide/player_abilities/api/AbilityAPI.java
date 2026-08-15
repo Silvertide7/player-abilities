@@ -611,11 +611,19 @@ public final class AbilityAPI {
             }
             for (AttributeModifier modifier : List.copyOf(attributeInstance.getModifiers())) {
                 if (modifier.id().getNamespace().equals(modifierNamespace)
-                        && modifier.id().getPath().startsWith(modifierPathPrefix)) {
+                        && isPassiveAttributeModifierPath(modifier.id().getPath(), modifierPathPrefix)) {
                     attributeInstance.removeModifier(modifier.id());
                 }
             }
         });
+    }
+
+    private static boolean isPassiveAttributeModifierPath(String modifierPath, String modifierPathPrefix) {
+        if (!modifierPath.startsWith(modifierPathPrefix)) {
+            return false;
+        }
+        int operationSlash = modifierPath.indexOf('/', modifierPathPrefix.length());
+        return operationSlash >= 0 && modifierPath.indexOf('/', operationSlash + 1) < 0;
     }
 
     private static ResourceLocation attributeModifierId(PassiveAbility passive, AttributeGrant attributeGrant) {

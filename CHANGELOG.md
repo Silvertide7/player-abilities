@@ -1,3 +1,7 @@
+1.0.8
+---
+- Fixed a passive ability whose id nests under another's (like example:speed and example:speed/two) having its attribute bonuses stripped when the other activates.
+
 1.0.7
 ---
 - Players with PMMO's ignoreReqs flag (/pmmo admin <player> ignoreReqs) now bypass ability skill requirements, matching how PMMO treats its own requirements.

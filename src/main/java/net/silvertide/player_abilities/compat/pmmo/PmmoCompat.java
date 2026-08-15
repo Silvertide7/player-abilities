@@ -2,7 +2,6 @@ package net.silvertide.player_abilities.compat.pmmo;
 
 import harmonised.pmmo.api.APIUtils;
 import harmonised.pmmo.api.events.XpEvent;
-import harmonised.pmmo.config.codecs.PlayerData;
 import harmonised.pmmo.core.Core;
 import harmonised.pmmo.util.Reference;
 import net.minecraft.network.chat.Component;
@@ -58,9 +57,9 @@ public final class PmmoCompat {
     }
 
     private static boolean playerIgnoresRequirements(Player player) {
-        PlayerData playerData = Core.get(player.level()).getLoader().PLAYER_LOADER
-                .getData(Reference.mc(player.getUUID().toString()));
-        return playerData != null && playerData.ignoreReq();
+        return Core.get(player.level()).getLoader().PLAYER_LOADER
+                .getData(Reference.mc(player.getUUID().toString()))
+                .ignoreReq();
     }
 
     private static void onXpEvent(XpEvent event) {
