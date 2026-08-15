@@ -72,7 +72,10 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
             AbilityConfig.CODEC.parse(JsonOps.INSTANCE, json)
                     .resultOrPartial(error -> PlayerAbilities.LOGGER.warn(
                             "Skipping malformed player_abilities config for {}: {}", abilityId, error))
-                    .ifPresent(config -> parsed.put(ability, config));
+                    .ifPresent(config -> {
+                        warnInapplicableKeys(ability, config);
+                        parsed.put(ability, config);
+                    });
         });
         Set<Ability> nowDisabled = disabledAbilities(parsed);
         Set<Ability> previouslyDisabled = lastServerDisabled;
@@ -88,6 +91,30 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
         lastServerDisabled = nowDisabled;
         configs = Map.copyOf(parsed);
         generation++;
+    }
+
+    private static void warnInapplicableKeys(Ability ability, AbilityConfig config) {
+        if (!(ability instanceof GatedAbility)) {
+            warnInapplicable(ability, config.cooldownTicks(), "cooldown_ticks");
+            warnInapplicable(ability, config.killRequirement(), "kill_requirement");
+            warnInapplicable(ability, config.damageTakenRequirement(), "damage_taken_requirement");
+            warnInapplicable(ability, config.effectDurationTicks(), "effect_duration_ticks");
+            warnInapplicable(ability, config.effectGrants(), "effect_grants");
+            warnInapplicable(ability, config.pmmoUseRequirement(), "pmmo_use_requirement");
+        }
+        if (!(ability instanceof ActiveAbility)) {
+            warnInapplicable(ability, config.useTicks(), "use_ticks");
+        }
+        if (!(ability instanceof PassiveAbility)) {
+            warnInapplicable(ability, config.attributeGrants(), "attribute_grants");
+        }
+    }
+
+    private static void warnInapplicable(Ability ability, Optional<?> value, String key) {
+        if (value.isPresent()) {
+            PlayerAbilities.LOGGER.warn("player_abilities config for {} declares '{}', which has no effect on this kind of ability",
+                    ability.getId(), key);
+        }
     }
 
     @SubscribeEvent

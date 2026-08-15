@@ -23,7 +23,6 @@ import net.silvertide.player_abilities.data.AbilityCapability;
 import net.silvertide.player_abilities.data.AbilityData;
 import net.silvertide.player_abilities.network.AbilitySync;
 
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -36,17 +35,17 @@ public final class PlayerLifecycleHandler {
     public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
             reapplyPassives(serverPlayer);
-            Map.copyOf(AbilityAPI.getActiveEffects(serverPlayer)).forEach((ability, effect) -> {
-                if (AbilityConfigs.isEnabled(ability)) {
-                    ability.onEffectStart(serverPlayer, effect.getLevel());
-                }
-            });
+            AbilityAPI.restartActiveEffects(serverPlayer);
             AbilitySync.syncAllState(serverPlayer);
         }
     }
 
     @SubscribeEvent
     public static void onClone(PlayerEvent.Clone event) {
+        if (!event.isWasDeath() && event.getOriginal() instanceof ServerPlayer originalPlayer) {
+            originalPlayer.reviveCaps();
+            AbilityAPI.cancelUse(originalPlayer);
+        }
         AbilityCapability.copy(event.getOriginal(), event.getEntity());
         AbilityTickJobs.cancelPlayerJobs(event.getEntity().getUUID());
     }
@@ -55,6 +54,7 @@ public final class PlayerLifecycleHandler {
     public static void onRespawn(PlayerEvent.PlayerRespawnEvent event) {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
             reapplyPassives(serverPlayer);
+            AbilityAPI.restartActiveEffects(serverPlayer);
             AbilitySync.syncAllState(serverPlayer);
             AbilityAPI.fireTrigger(PlayerTriggers.RESPAWN, serverPlayer);
         }

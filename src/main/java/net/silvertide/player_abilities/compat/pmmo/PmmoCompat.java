@@ -2,11 +2,13 @@ package net.silvertide.player_abilities.compat.pmmo;
 
 import harmonised.pmmo.api.APIUtils;
 import harmonised.pmmo.api.events.XpEvent;
+import harmonised.pmmo.core.Core;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.OnDatapackSyncEvent;
@@ -41,7 +43,7 @@ public final class PmmoCompat {
 
     private static void onAbilityPerform(AbilityPerformEvent event) {
         Optional<AbilityConfig.PmmoUseRequirement> useRequirement = AbilityConfigs.pmmoUseRequirement(event.getAbility());
-        if (useRequirement.isEmpty()) {
+        if (useRequirement.isEmpty() || playerIgnoresRequirements(event.getEntity())) {
             return;
         }
         AbilityConfig.PmmoUseRequirement requirement = useRequirement.get();
@@ -51,6 +53,12 @@ public final class PmmoCompat {
             event.getEntity().displayClientMessage(Component.translatable(
                     "message.player_abilities.pmmo_requirement", requirement.skill(), requiredLevel), true);
         }
+    }
+
+    private static boolean playerIgnoresRequirements(Player player) {
+        return Core.get(player.level()).getLoader().PLAYER_LOADER
+                .getData(new ResourceLocation(player.getUUID().toString()))
+                .ignoreReq();
     }
 
     private static void onXpEvent(XpEvent event) {

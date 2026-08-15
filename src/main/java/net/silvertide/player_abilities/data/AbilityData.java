@@ -150,8 +150,10 @@ public class AbilityData {
     }
 
     public int setGrant(ResourceLocation source, Ability ability, int level) {
-        cachedTriggeredGrants = null;
         Integer previousLevel = grants.computeIfAbsent(source, key -> new HashMap<>()).put(ability, level);
+        if (previousLevel == null || previousLevel != level) {
+            cachedTriggeredGrants = null;
+        }
         return previousLevel == null ? 0 : previousLevel;
     }
 

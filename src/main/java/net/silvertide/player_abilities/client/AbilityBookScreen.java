@@ -10,6 +10,7 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.silvertide.player_abilities.api.Ability;
 import net.silvertide.player_abilities.api.ActiveAbility;
+import net.silvertide.player_abilities.api.Cooldown;
 import net.silvertide.player_abilities.api.GatedAbility;
 import net.silvertide.player_abilities.api.PassiveAbility;
 import net.silvertide.player_abilities.api.TriggeredAbility;
@@ -308,16 +309,15 @@ public final class AbilityBookScreen extends Screen {
     }
 
     private String statusText(GatedAbility ability, int level) {
-        int cooldownSeconds = abilityData.getCooldown(ability)
-                .map(cooldown -> Mth.ceil(cooldown.remainingTicks() / 20.0f)).orElse(0);
+        Cooldown cooldown = abilityData.getCooldown(ability).orElse(null);
+        int cooldownSeconds = cooldown == null ? 0 : Mth.ceil(cooldown.remainingTicks() / 20.0f);
         RequirementProgress progress = abilityData.getRequirementProgress(ability).orElse(null);
         long key = packStatusCacheKey(cooldownSeconds, progress);
         StatusLine cached = statusCache.get(ability);
         if (cached == null || cached.key() != key) {
             StringBuilder status = new StringBuilder();
             if (cooldownSeconds > 0) {
-                status.append(AbilityIcons.formatCooldown(
-                        abilityData.getCooldown(ability).map(cooldown -> cooldown.remainingTicks()).orElse(0)));
+                status.append(AbilityIcons.formatCooldown(cooldown.remainingTicks()));
             }
             if (progress != null) {
                 String fragment = AbilityIcons.requirementFragment(progress,

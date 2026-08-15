@@ -232,7 +232,11 @@ public final class AbilityAPI {
             return;
         }
         abilityData.incrementUseElapsed();
-        ability.onUseTick(player, use.getLevel(), use.getElapsedTicks(), use.getTotalTicks());
+        try {
+            ability.onUseTick(player, use.getLevel(), use.getElapsedTicks(), use.getTotalTicks());
+        } catch (RuntimeException exception) {
+            PlayerAbilities.LOGGER.error("Ability {} threw in onUseTick; skipping it", ability.getId(), exception);
+        }
         if (abilityData.getActiveUse().filter(current -> current == use && !current.isCompleting()).isEmpty()) {
             return;
         }
@@ -380,6 +384,18 @@ public final class AbilityAPI {
         AbilitySync.syncEffects(player);
     }
 
+    public static void restartActiveEffects(ServerPlayer player) {
+        Map.copyOf(getData(player).getActiveEffects()).forEach((ability, effect) -> {
+            if (AbilityConfigs.isEnabled(ability)) {
+                try {
+                    ability.onEffectStart(player, effect.getLevel());
+                } catch (RuntimeException exception) {
+                    PlayerAbilities.LOGGER.error("Ability {} threw in onEffectStart; skipping it", ability.getId(), exception);
+                }
+            }
+        });
+    }
+
     private static void tickEffects(ServerPlayer player, AbilityData abilityData) {
         if (abilityData.getActiveEffects().isEmpty()) {
             return;
@@ -393,10 +409,18 @@ public final class AbilityAPI {
                 continue;
             }
             abilityData.decrementEffect(effect);
-            ability.onEffectTick(player, effect.getLevel(), effect.getRemainingTicks());
+            try {
+                ability.onEffectTick(player, effect.getLevel(), effect.getRemainingTicks());
+            } catch (RuntimeException exception) {
+                PlayerAbilities.LOGGER.error("Ability {} threw in onEffectTick; skipping it", ability.getId(), exception);
+            }
             if (effect.isExpired() && abilityData.isCurrentEffect(ability, effect)) {
                 abilityData.removeEffect(ability);
-                ability.onEffectEnd(player, effect.getLevel(), true);
+                try {
+                    ability.onEffectEnd(player, effect.getLevel(), true);
+                } catch (RuntimeException exception) {
+                    PlayerAbilities.LOGGER.error("Ability {} threw in onEffectEnd; skipping it", ability.getId(), exception);
+                }
                 anyExpired = true;
             }
         }
@@ -543,17 +567,31 @@ public final class AbilityAPI {
     }
 
     public static void activatePassive(ServerPlayer player, PassiveAbility passive, int level) {
+        removeAttributeGrants(player, passive);
         applyAttributeGrants(player, passive, level);
-        passive.onActivated(player, level);
+        try {
+            passive.onActivated(player, level);
+        } catch (RuntimeException exception) {
+            PlayerAbilities.LOGGER.error("Ability {} threw in onActivated; skipping it", passive.getId(), exception);
+        }
     }
 
     public static void deactivatePassive(ServerPlayer player, PassiveAbility passive, int level) {
         removeAttributeGrants(player, passive);
-        passive.onDeactivated(player, level);
+        try {
+            passive.onDeactivated(player, level);
+        } catch (RuntimeException exception) {
+            PlayerAbilities.LOGGER.error("Ability {} threw in onDeactivated; skipping it", passive.getId(), exception);
+        }
     }
 
     private static void applyAttributeGrants(ServerPlayer player, PassiveAbility passive, int level) {
         for (AttributeGrant attributeGrant : AbilityConfigs.attributeGrants(passive, level)) {
+            if (ForgeRegistries.ATTRIBUTES.getKey(attributeGrant.attribute()) == null) {
+                PlayerAbilities.LOGGER.warn("Passive {} declares a grant for an unregistered attribute; skipping it",
+                        passive.getId());
+                continue;
+            }
             AttributeInstance attributeInstance = player.getAttribute(attributeGrant.attribute());
             if (attributeInstance == null) {
                 PlayerAbilities.LOGGER.warn("Passive {} declares a grant for attribute {} that players do not have",
@@ -574,11 +612,19 @@ public final class AbilityAPI {
             AttributeInstance attributeInstance = player.getAttribute(attribute);
             if (attributeInstance == null) continue;
             for (AttributeModifier modifier : List.copyOf(attributeInstance.getModifiers())) {
-                if (modifier.getName().startsWith(modifierNamePrefix)) {
+                if (isPassiveAttributeModifierName(modifier.getName(), modifierNamePrefix)) {
                     attributeInstance.removeModifier(modifier.getId());
                 }
             }
         }
+    }
+
+    private static boolean isPassiveAttributeModifierName(String modifierName, String modifierNamePrefix) {
+        if (!modifierName.startsWith(modifierNamePrefix)) {
+            return false;
+        }
+        int operationSlash = modifierName.indexOf('/', modifierNamePrefix.length());
+        return operationSlash >= 0 && modifierName.indexOf('/', operationSlash + 1) < 0;
     }
 
     private static String attributeModifierNamePrefix(PassiveAbility passive) {

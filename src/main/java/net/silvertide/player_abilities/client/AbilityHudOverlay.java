@@ -236,6 +236,9 @@ public final class AbilityHudOverlay implements IGuiOverlay {
     }
 
     private void renderNotifications(GuiGraphics guiGraphics, Minecraft minecraft) {
+        if (AbilityNotifications.activatedNotices().isEmpty()) {
+            return;
+        }
         int bannerY = guiGraphics.guiHeight() / 3;
         for (AbilityNotifications.Notice notice : AbilityNotifications.activatedNotices()) {
             AbilityIcons.render(guiGraphics, minecraft.font, notice.ability(), MARGIN, bannerY, ICON_SIZE);
@@ -248,6 +251,9 @@ public final class AbilityHudOverlay implements IGuiOverlay {
 
     private int renderReadyNotices(GuiGraphics guiGraphics, Minecraft minecraft, int stackCursor,
                                    boolean rightSide, boolean topSide) {
+        if (AbilityNotifications.readyNotices().isEmpty()) {
+            return stackCursor;
+        }
         for (AbilityNotifications.Notice notice : AbilityNotifications.readyNotices()) {
             int lineY = topSide ? stackCursor : stackCursor - minecraft.font.lineHeight;
             int lineX = rightSide ? guiGraphics.guiWidth() - MARGIN - minecraft.font.width(notice.title()) : MARGIN;
