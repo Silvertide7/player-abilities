@@ -2,12 +2,14 @@ package net.silvertide.player_abilities.config;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
+import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.AttributeGrant;
 import net.silvertide.player_abilities.api.EffectGrant;
 
@@ -97,15 +99,15 @@ public record AbilityConfig(Optional<Boolean> enabled,
     private static <T> Codec<T> logged(String fieldName, Codec<T> codec) {
         return new Codec<>() {
             @Override
-            public <D> com.mojang.serialization.DataResult<com.mojang.datafixers.util.Pair<T, D>> decode(com.mojang.serialization.DynamicOps<D> ops, D input) {
+            public <D> DataResult<com.mojang.datafixers.util.Pair<T, D>> decode(DynamicOps<D> ops, D input) {
                 var result = codec.decode(ops, input);
-                result.error().ifPresent(error -> net.silvertide.player_abilities.PlayerAbilities.LOGGER.warn(
+                result.error().ifPresent(error -> PlayerAbilities.LOGGER.warn(
                         "player_abilities config field '{}' is invalid and falls back to the ability default: {}", fieldName, error.message()));
                 return result;
             }
 
             @Override
-            public <D> com.mojang.serialization.DataResult<D> encode(T input, com.mojang.serialization.DynamicOps<D> ops, D prefix) {
+            public <D> DataResult<D> encode(T input, DynamicOps<D> ops, D prefix) {
                 return codec.encode(input, ops, prefix);
             }
         };

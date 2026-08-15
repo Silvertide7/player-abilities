@@ -1,5 +1,7 @@
 {
-  "enabled": true,
   "pmmo_use_requirement": { "skill": "combat", "level": [5, 10, 15] },
-  "max_level": 3
+  "max_level": 3,
+  "effect_grants": [
+    { "effect": "minecraft:jump_boost", "duration_ticks": 100 }
+  ]
 }

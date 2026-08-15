@@ -20,6 +20,8 @@ import net.silvertide.player_abilities.api.client.AbilityClientAPI;
 import net.silvertide.player_abilities.data.RequirementProgress;
 import net.silvertide.player_abilities.item.AbilityBookItem;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -42,8 +44,7 @@ public final class AbilityBookScreen extends Screen {
     private static final int TEXT_MUTED = 0xA0A0B0;
     private static final int STATUS_PENDING = 0xFFCC66;
     private static final int TOOLTIP_WIDTH = 180;
-    private static final Component READY = Component.translatable("hud.player_abilities.ready");
-    private static final Component NO_ABILITIES = Component.translatable("hud.player_abilities.no_abilities");
+    private static final int ABSENT_PROGRESS_FIELD = 0xFFFFF;
     private static final Component PASSIVE_ON = Component.translatable("gui.player_abilities.passive_on");
     private static final Component PASSIVE_OFF = Component.translatable("gui.player_abilities.passive_off");
     private static final int TOGGLE_PADDING = 5;
@@ -180,7 +181,7 @@ public final class AbilityBookScreen extends Screen {
         guiGraphics.fill(panelX, panelTop, panelX + PANEL_WIDTH, panelBottom, PANEL_BACKGROUND);
         guiGraphics.drawCenteredString(font, title, width / 2, panelTop - 14, TEXT_PRIMARY);
         if (tabButtons.isEmpty()) {
-            guiGraphics.drawCenteredString(font, NO_ABILITIES,
+            guiGraphics.drawCenteredString(font, AbilityIcons.NO_ABILITIES,
                     width / 2, (panelTop + panelBottom) / 2, TEXT_MUTED);
             return;
         }
@@ -271,7 +272,7 @@ public final class AbilityBookScreen extends Screen {
         if (entry.ability() instanceof GatedAbility gated) {
             String status = statusText(gated, entry.level());
             if (status.isEmpty()) {
-                guiGraphics.drawString(font, READY, rowRight - font.width(READY), rowY + 4, TEXT_MUTED);
+                guiGraphics.drawString(font, AbilityIcons.READY, rowRight - font.width(AbilityIcons.READY), rowY + 4, TEXT_MUTED);
             } else {
                 guiGraphics.drawString(font, status, rowRight - font.width(status), rowY + 4, STATUS_PENDING);
             }
@@ -300,13 +301,17 @@ public final class AbilityBookScreen extends Screen {
                 on ? TOGGLE_TEXT_ON : TOGGLE_TEXT_OFF);
     }
 
+    private static long packStatusCacheKey(int cooldownSeconds, @Nullable RequirementProgress progress) {
+        long killsField = progress == null ? ABSENT_PROGRESS_FIELD : progress.getKills() & ABSENT_PROGRESS_FIELD;
+        long damageField = progress == null ? ABSENT_PROGRESS_FIELD : (int) progress.getDamageTaken() & ABSENT_PROGRESS_FIELD;
+        return (long) cooldownSeconds << 41 | killsField << 20 | damageField;
+    }
+
     private String statusText(GatedAbility ability, int level) {
         int cooldownSeconds = abilityData.getCooldown(ability)
                 .map(cooldown -> Mth.ceil(cooldown.remainingTicks() / 20.0f)).orElse(0);
         RequirementProgress progress = abilityData.getRequirementProgress(ability).orElse(null);
-        long key = ((long) cooldownSeconds << 41)
-                | ((long) (progress == null ? 0xFFFFF : progress.getKills() & 0xFFFFF) << 20)
-                | (progress == null ? 0xFFFFF : (int) progress.getDamageTaken() & 0xFFFFF);
+        long key = packStatusCacheKey(cooldownSeconds, progress);
         StatusLine cached = statusCache.get(ability);
         if (cached == null || cached.key() != key) {
             StringBuilder status = new StringBuilder();

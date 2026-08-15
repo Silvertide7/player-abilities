@@ -18,6 +18,7 @@ import net.silvertide.player_abilities.config.AbilityConfigs;
 
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.Map;
 import java.util.Optional;
 
@@ -61,9 +62,11 @@ public final class PuffishSkillsCompat {
         if (server == null) {
             return;
         }
+        UUID playerId = player.getUUID();
         server.tell(new TickTask(server.getTickCount() + 1, () -> {
-            if (!player.hasDisconnected()) {
-                reconcile(player);
+            ServerPlayer livePlayer = server.getPlayerList().getPlayer(playerId);
+            if (livePlayer != null && !livePlayer.isRemoved()) {
+                reconcile(livePlayer);
             }
         }));
     }

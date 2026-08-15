@@ -51,6 +51,10 @@ public final class AbilityTickJobs {
         return scheduled;
     }
 
+    public static void cancelPlayerJobs(UUID playerId) {
+        JOBS_BY_PLAYER.remove(playerId);
+    }
+
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;

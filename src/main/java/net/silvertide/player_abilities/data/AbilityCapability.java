@@ -3,6 +3,7 @@ package net.silvertide.player_abilities.data;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.common.capabilities.Capability;
@@ -20,11 +21,16 @@ import org.jetbrains.annotations.Nullable;
 @Mod.EventBusSubscriber(modid = PlayerAbilities.MOD_ID)
 public final class AbilityCapability {
     public static final Capability<AbilityData> ABILITY_DATA = CapabilityManager.get(new CapabilityToken<>() {});
-    private static final net.minecraft.resources.ResourceLocation ID = PlayerAbilities.id("ability_data");
+    private static final ResourceLocation ID = PlayerAbilities.id("ability_data");
 
     public static AbilityData get(Player player) {
         return player.getCapability(ABILITY_DATA).orElseThrow(
                 () -> new IllegalStateException("Player " + player.getGameProfile().getName() + " is missing ability data"));
+    }
+
+    @Nullable
+    public static AbilityData find(Player player) {
+        return player.getCapability(ABILITY_DATA).resolve().orElse(null);
     }
 
     public static void copy(Player from, Player to) {
@@ -36,9 +42,7 @@ public final class AbilityCapability {
     @SubscribeEvent
     public static void onAttachCapabilities(AttachCapabilitiesEvent<Entity> event) {
         if (event.getObject() instanceof Player) {
-            Provider provider = new Provider();
-            event.addCapability(ID, provider);
-            event.addListener(provider.optional::invalidate);
+            event.addCapability(ID, new Provider());
         }
     }
 

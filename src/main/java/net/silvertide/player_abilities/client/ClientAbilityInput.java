@@ -3,7 +3,6 @@ package net.silvertide.player_abilities.client;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -19,7 +18,6 @@ import java.util.List;
 
 @Mod.EventBusSubscriber(modid = PlayerAbilities.MOD_ID, value = Dist.CLIENT)
 public final class ClientAbilityInput {
-    private static final Component NO_ABILITIES = Component.translatable("hud.player_abilities.no_abilities");
 
     private static boolean suppressWheelUntilKeyReleased;
 
@@ -49,7 +47,10 @@ public final class ClientAbilityInput {
         if (player == null) {
             return;
         }
-        AbilityData abilityData = AbilityCapability.get(player);
+        AbilityData abilityData = AbilityCapability.find(player);
+        if (abilityData == null) {
+            return;
+        }
         while (AbilityKeyMappings.USE.consumeClick()) {
             AbilityClientAPI.use();
         }
@@ -67,7 +68,7 @@ public final class ClientAbilityInput {
         while (AbilityKeyMappings.WHEEL.consumeClick()) {
             if (Minecraft.getInstance().screen == null) {
                 if (abilityData.getGrantedActives().isEmpty()) {
-                    player.displayClientMessage(NO_ABILITIES, true);
+                    player.displayClientMessage(AbilityIcons.NO_ABILITIES, true);
                 } else {
                     Minecraft.getInstance().setScreen(new AbilityWheelScreen(player));
                 }

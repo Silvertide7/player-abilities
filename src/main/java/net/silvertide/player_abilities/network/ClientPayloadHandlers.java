@@ -4,7 +4,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.network.NetworkEvent;
 import net.silvertide.player_abilities.api.Ability;
 import net.silvertide.player_abilities.api.AbilityRegistry;
 import net.silvertide.player_abilities.api.ActiveAbility;
@@ -12,6 +11,7 @@ import net.silvertide.player_abilities.api.PassiveAbility;
 import net.silvertide.player_abilities.client.AbilityNotifications;
 import net.silvertide.player_abilities.config.AbilityConfigs;
 import net.silvertide.player_abilities.data.AbilityCapability;
+import net.silvertide.player_abilities.data.AbilityData;
 import net.silvertide.player_abilities.data.ActiveEffect;
 
 import java.util.HashMap;
@@ -19,13 +19,12 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Supplier;
 
 public final class ClientPayloadHandlers {
     private ClientPayloadHandlers() {
     }
 
-    public static void handleSyncAbilities(SyncAbilitiesPayload payload, Supplier<NetworkEvent.Context> context) {
+    public static void handleSyncAbilities(SyncAbilitiesPayload payload) {
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null || !(level.getEntity(payload.playerEntityId()) instanceof Player targetPlayer)) {
             return;
@@ -43,16 +42,23 @@ public final class ClientPayloadHandlers {
         ActiveAbility selected = payload.selectedId()
                 .flatMap(AbilityRegistry::getActive)
                 .orElse(null);
-        AbilityCapability.get(targetPlayer).replaceSyncedState(grantedLevels, disabledPassives, selected);
+        AbilityData targetData = AbilityCapability.find(targetPlayer);
+        if (targetData == null) {
+            return;
+        }
+        targetData.replaceSyncedState(grantedLevels, disabledPassives, selected);
     }
 
-    public static void handleSyncCooldown(SyncCooldownPayload payload, Supplier<NetworkEvent.Context> context) {
+    public static void handleSyncCooldown(SyncCooldownPayload payload) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {
             return;
         }
+        AbilityData abilityData = AbilityCapability.find(player);
+        if (abilityData == null) {
+            return;
+        }
         AbilityRegistry.getGated(payload.abilityId()).ifPresent(active -> {
-            var abilityData = AbilityCapability.get(player);
             if (payload.cooldown().isExpired()) {
                 abilityData.removeCooldown(active);
             } else {
@@ -61,7 +67,7 @@ public final class ClientPayloadHandlers {
         });
     }
 
-    public static void handleSyncEffects(SyncEffectsPayload payload, Supplier<NetworkEvent.Context> context) {
+    public static void handleSyncEffects(SyncEffectsPayload payload) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {
             return;
@@ -73,41 +79,50 @@ public final class ClientPayloadHandlers {
                 effects.put(ability, effect);
             }
         });
-        AbilityCapability.get(player).replaceSyncedEffects(effects);
+        AbilityData abilityData = AbilityCapability.find(player);
+        if (abilityData == null) {
+            return;
+        }
+        abilityData.replaceSyncedEffects(effects);
     }
 
-    public static void handleSyncAbilityConfigs(SyncAbilityConfigsPayload payload, Supplier<NetworkEvent.Context> context) {
+    public static void handleSyncAbilityConfigs(SyncAbilityConfigsPayload payload) {
         AbilityConfigs.replaceFromSync(payload.configs());
     }
 
-    public static void handleTriggeredActivated(TriggeredActivatedPayload payload, Supplier<NetworkEvent.Context> context) {
+    public static void handleTriggeredActivated(TriggeredActivatedPayload payload) {
         AbilityRegistry.getGated(payload.abilityId()).ifPresent(ability ->
                 AbilityNotifications.onTriggeredActivated(ability, payload.cooldownTicks()));
     }
 
-    public static void handleAbilityReady(AbilityReadyPayload payload, Supplier<NetworkEvent.Context> context) {
+    public static void handleAbilityReady(AbilityReadyPayload payload) {
         AbilityRegistry.getGated(payload.abilityId()).ifPresent(AbilityNotifications::onAbilityReady);
     }
 
-    public static void handleSyncRequirement(SyncRequirementPayload payload, Supplier<NetworkEvent.Context> context) {
+    public static void handleSyncRequirement(SyncRequirementPayload payload) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {
             return;
         }
-        AbilityRegistry.getGated(payload.abilityId()).ifPresent(active -> {
-            var abilityData = AbilityCapability.get(player);
+        AbilityData abilityData = AbilityCapability.find(player);
+        if (abilityData == null) {
+            return;
+        }
+        AbilityRegistry.getGated(payload.abilityId()).ifPresent(active ->
             payload.progress().ifPresentOrElse(
                     progress -> abilityData.putRequirementProgress(active, progress),
-                    () -> abilityData.removeRequirementProgress(active));
-        });
+                    () -> abilityData.removeRequirementProgress(active)));
     }
 
-    public static void handleSyncUseState(SyncUseStatePayload payload, Supplier<NetworkEvent.Context> context) {
+    public static void handleSyncUseState(SyncUseStatePayload payload) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {
             return;
         }
-        var abilityData = AbilityCapability.get(player);
+        AbilityData abilityData = AbilityCapability.find(player);
+        if (abilityData == null) {
+            return;
+        }
         Optional<ActiveAbility> usingAbility = payload.usingAbilityId().flatMap(AbilityRegistry::getActive);
         if (usingAbility.isPresent()) {
             abilityData.startUse(usingAbility.get(), payload.level(), payload.totalTicks(), null, 0);

@@ -24,6 +24,7 @@ import net.silvertide.player_abilities.api.ActiveAbility;
 import net.silvertide.player_abilities.api.GatedAbility;
 import net.silvertide.player_abilities.network.AbilityNetworking;
 import net.silvertide.player_abilities.network.SyncAbilityConfigsPayload;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.List;
@@ -41,7 +42,7 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
     private static volatile int generation;
     private static volatile Set<Ability> pendingNewlyDisabled = Set.of();
     private static volatile Set<Ability> pendingNewlyEnabled = Set.of();
-    @org.jetbrains.annotations.Nullable
+    @Nullable
     private static Set<Ability> lastServerDisabled;
 
     private AbilityConfigs() {
@@ -124,6 +125,9 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
                 : List.copyOf(event.getPlayerList().getPlayers());
         SyncAbilityConfigsPayload payload = buildSyncPayload();
         relevantPlayers.forEach(player -> AbilityNetworking.sendToPlayer(player, payload));
+        if (event.getPlayer() != null) {
+            return;
+        }
         Set<Ability> newlyDisabled = pendingNewlyDisabled;
         Set<Ability> newlyEnabled = pendingNewlyEnabled;
         pendingNewlyDisabled = Set.of();
@@ -150,6 +154,11 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
             }
         });
         configs = Map.copyOf(resolved);
+        generation++;
+    }
+
+    public static void clearSyncedConfigs() {
+        configs = Map.of();
         generation++;
     }
 

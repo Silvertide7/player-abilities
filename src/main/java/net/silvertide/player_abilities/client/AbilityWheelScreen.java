@@ -37,7 +37,6 @@ public final class AbilityWheelScreen extends Screen {
     private static final float[] HOVERED_COLOR = {0.18f, 0.72f, 0.63f, 0.55f};
     private static final float[] SELECTED_RING_COLOR = {0.31f, 0.78f, 0.71f, 0.90f};
     private static final float[] HUB_COLOR = {0.04f, 0.04f, 0.07f, 0.70f};
-    private static final Component NO_ABILITIES = Component.translatable("hud.player_abilities.no_abilities");
     private static final float PAGE_ARROW_MARGIN = 16.0f;
     private static final float PAGE_ARROW_HALF_WIDTH = 5.0f;
     private static final float PAGE_ARROW_HALF_HEIGHT = 7.0f;
@@ -118,11 +117,11 @@ public final class AbilityWheelScreen extends Screen {
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         Minecraft minecraft = Minecraft.getInstance();
         LocalPlayer player = minecraft.player;
-        if (player == null) {
+        AbilityData abilityData = player == null ? null : AbilityCapability.find(player);
+        if (abilityData == null) {
             onClose();
             return;
         }
-        AbilityData abilityData = AbilityCapability.get(player);
         float centerX = width / 2.0f;
         float centerY = height / 2.0f;
         List<ActiveAbility> pageAbilities = currentPage();
@@ -232,7 +231,7 @@ public final class AbilityWheelScreen extends Screen {
         int sectorCount = pageAbilities.size();
         if (sectorCount == 0) {
             guiGraphics.drawCenteredString(minecraft.font,
-                    NO_ABILITIES,
+                    AbilityIcons.NO_ABILITIES,
                     (int) centerX, (int) (centerY - OUTER_RADIUS - 16), 0xA0A0B0);
             return;
         }

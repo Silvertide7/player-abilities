@@ -38,35 +38,35 @@ public final class AbilityNetworking {
         CHANNEL.messageBuilder(SyncAbilitiesPayload.class, id++, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(SyncAbilitiesPayload::encode).decoder(SyncAbilitiesPayload::decode)
                 .consumerMainThread((msg, ctx) ->
-                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncAbilities(msg, ctx))).add();
+                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncAbilities(msg))).add();
         CHANNEL.messageBuilder(SyncCooldownPayload.class, id++, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(SyncCooldownPayload::encode).decoder(SyncCooldownPayload::decode)
                 .consumerMainThread((msg, ctx) ->
-                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncCooldown(msg, ctx))).add();
+                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncCooldown(msg))).add();
         CHANNEL.messageBuilder(SyncUseStatePayload.class, id++, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(SyncUseStatePayload::encode).decoder(SyncUseStatePayload::decode)
                 .consumerMainThread((msg, ctx) ->
-                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncUseState(msg, ctx))).add();
+                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncUseState(msg))).add();
         CHANNEL.messageBuilder(SyncEffectsPayload.class, id++, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(SyncEffectsPayload::encode).decoder(SyncEffectsPayload::decode)
                 .consumerMainThread((msg, ctx) ->
-                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncEffects(msg, ctx))).add();
+                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncEffects(msg))).add();
         CHANNEL.messageBuilder(SyncRequirementPayload.class, id++, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(SyncRequirementPayload::encode).decoder(SyncRequirementPayload::decode)
                 .consumerMainThread((msg, ctx) ->
-                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncRequirement(msg, ctx))).add();
+                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncRequirement(msg))).add();
         CHANNEL.messageBuilder(TriggeredActivatedPayload.class, id++, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(TriggeredActivatedPayload::encode).decoder(TriggeredActivatedPayload::decode)
                 .consumerMainThread((msg, ctx) ->
-                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleTriggeredActivated(msg, ctx))).add();
+                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleTriggeredActivated(msg))).add();
         CHANNEL.messageBuilder(SyncAbilityConfigsPayload.class, id++, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(SyncAbilityConfigsPayload::encode).decoder(SyncAbilityConfigsPayload::decode)
                 .consumerMainThread((msg, ctx) ->
-                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncAbilityConfigs(msg, ctx))).add();
+                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleSyncAbilityConfigs(msg))).add();
         CHANNEL.messageBuilder(AbilityReadyPayload.class, id++, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(AbilityReadyPayload::encode).decoder(AbilityReadyPayload::decode)
                 .consumerMainThread((msg, ctx) ->
-                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleAbilityReady(msg, ctx))).add();
+                        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPayloadHandlers.handleAbilityReady(msg))).add();
     }
 
     public static void sendToPlayer(ServerPlayer player, Object message) {

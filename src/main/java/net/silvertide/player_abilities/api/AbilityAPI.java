@@ -26,10 +26,13 @@ import net.silvertide.player_abilities.data.RequirementProgress;
 import net.silvertide.player_abilities.network.AbilitySync;
 import org.jetbrains.annotations.Nullable;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -38,6 +41,10 @@ import java.util.function.Consumer;
 public final class AbilityAPI {
     public static final int MIN_LEVEL = 1;
     private static final double STATIONARY_USE_MAX_DRIFT_SQ = 0.25;
+    private static final Set<FiringTrigger> FIRING_TRIGGERS = new HashSet<>();
+
+    private record FiringTrigger(UUID playerId, TriggeredAbility<?> ability) {
+    }
 
     private AbilityAPI() {
     }
@@ -47,6 +54,11 @@ public final class AbilityAPI {
     }
 
     public static boolean grant(ServerPlayer player, ResourceLocation source, Ability ability, int level) {
+        if (ability.getId() == null) {
+            PlayerAbilities.LOGGER.warn("Refusing grant from source {}: ability class {} is not registered",
+                    source, ability.getClass().getName());
+            return false;
+        }
         int maxLevel = AbilityConfigs.maxLevel(ability);
         int grantedLevel = Mth.clamp(level, MIN_LEVEL, maxLevel);
         AbilityData abilityData = getData(player);
@@ -448,11 +460,6 @@ public final class AbilityAPI {
         return true;
     }
 
-    private record FiringTrigger(java.util.UUID playerId, TriggeredAbility<?> ability) {
-    }
-
-    private static final java.util.Set<FiringTrigger> FIRING_TRIGGERS = new java.util.HashSet<>();
-
     public static boolean fireTrigger(AbilityTrigger<Void> trigger, ServerPlayer player) {
         return fireTrigger(trigger, player, null);
     }
@@ -465,11 +472,16 @@ public final class AbilityAPI {
             }
             @SuppressWarnings("unchecked")
             TriggeredAbility<T> matched = (TriggeredAbility<T>) grant.ability();
-            if (matched.shouldTrigger(player, grant.level(), context) && trigger(player, matched)) {
-                anyFired = true;
-                if (trigger.isExclusive()) {
-                    return true;
+            try {
+                if (matched.shouldTrigger(player, grant.level(), context) && trigger(player, matched)) {
+                    anyFired = true;
+                    if (trigger.isExclusive()) {
+                        return true;
+                    }
                 }
+            } catch (RuntimeException exception) {
+                PlayerAbilities.LOGGER.error("Triggered ability {} threw handling {}; skipping it",
+                        matched.getId(), trigger, exception);
             }
         }
         return anyFired;
@@ -575,7 +587,7 @@ public final class AbilityAPI {
     }
 
     private static String attributeModifierName(PassiveAbility passive, AttributeGrant attributeGrant) {
-        ResourceLocation attributeId = java.util.Objects.requireNonNull(
+        ResourceLocation attributeId = Objects.requireNonNull(
                 ForgeRegistries.ATTRIBUTES.getKey(attributeGrant.attribute()));
         return attributeModifierNamePrefix(passive)
                 + attributeId.getNamespace() + "." + attributeId.getPath()
@@ -583,7 +595,7 @@ public final class AbilityAPI {
     }
 
     private static UUID attributeModifierUuid(String modifierName) {
-        return UUID.nameUUIDFromBytes(modifierName.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return UUID.nameUUIDFromBytes(modifierName.getBytes(StandardCharsets.UTF_8));
     }
 
     private static String operationName(AttributeModifier.Operation operation) {
@@ -635,7 +647,7 @@ public final class AbilityAPI {
     }
 
     public static Optional<AbilityUse> getActiveUse(Player player) {
-        return getData(player).getActiveUse().map(use -> use);
+        return getData(player).getActiveUse().map(AbilityUse.class::cast);
     }
 
     public static double getAbilityPower(ServerPlayer player) {

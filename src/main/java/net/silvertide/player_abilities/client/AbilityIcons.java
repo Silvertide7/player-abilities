@@ -21,6 +21,9 @@ import java.util.Optional;
 
 @Mod.EventBusSubscriber(modid = PlayerAbilities.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class AbilityIcons {
+    public static final Component READY = Component.translatable("hud.player_abilities.ready");
+    public static final Component NO_ABILITIES = Component.translatable("hud.player_abilities.no_abilities");
+
     private static final Map<Ability, Optional<ResourceLocation>> ICON_CACHE = new HashMap<>();
     private static final Map<Ability, String> INITIALS_CACHE = new HashMap<>();
     private static final Map<Ability, Component> NAME_CACHE = new HashMap<>();

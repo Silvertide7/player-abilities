@@ -6,6 +6,7 @@ import net.silvertide.player_abilities.network.AbilityNetworking;
 import net.silvertide.player_abilities.api.ActiveAbility;
 import net.silvertide.player_abilities.api.PassiveAbility;
 import net.silvertide.player_abilities.data.AbilityCapability;
+import net.silvertide.player_abilities.data.AbilityData;
 import net.silvertide.player_abilities.network.UseAbilityPayload;
 import net.silvertide.player_abilities.network.SelectAbilityPayload;
 import net.silvertide.player_abilities.network.TogglePassivePayload;
@@ -19,7 +20,11 @@ public final class AbilityClientAPI {
         if (player == null) {
             return;
         }
-        AbilityCapability.get(player).setSelected(ability);
+        AbilityData abilityData = AbilityCapability.find(player);
+        if (abilityData == null) {
+            return;
+        }
+        abilityData.setSelected(ability);
         AbilityNetworking.sendToServer(new SelectAbilityPayload(ability.getId()));
     }
 
