@@ -51,6 +51,10 @@ public final class AbilityTickJobs {
         return scheduled;
     }
 
+    public static void cancelPlayerJobs(UUID playerId) {
+        JOBS_BY_PLAYER.remove(playerId);
+    }
+
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
         if (JOBS_BY_PLAYER.isEmpty()) {
@@ -66,19 +70,27 @@ public final class AbilityTickJobs {
                 JOBS_BY_PLAYER.remove(playerId);
                 continue;
             }
+            boolean anyCancelled = false;
             for (int i = 0; i < jobs.size(); i++) {
                 ScheduledJob scheduled = jobs.get(i);
-                if (scheduled.cancelled || --scheduled.ticksUntilRun > 0) {
+                if (scheduled.cancelled) {
+                    anyCancelled = true;
+                    continue;
+                }
+                if (--scheduled.ticksUntilRun > 0) {
                     continue;
                 }
                 scheduled.ticksUntilRun = scheduled.intervalTicks;
                 if (!scheduled.job.tick(player)) {
                     scheduled.cancelled = true;
+                    anyCancelled = true;
                 }
             }
-            jobs.removeIf(scheduled -> scheduled.cancelled);
+            if (anyCancelled) {
+                jobs.removeIf(scheduled -> scheduled.cancelled);
+            }
             if (jobs.isEmpty()) {
-                JOBS_BY_PLAYER.remove(playerId);
+                JOBS_BY_PLAYER.remove(playerId, jobs);
             }
         }
     }

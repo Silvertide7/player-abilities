@@ -24,6 +24,8 @@ import net.silvertide.player_abilities.api.ActiveAbility;
 import net.silvertide.player_abilities.api.GatedAbility;
 import net.silvertide.player_abilities.network.SyncAbilityConfigsPayload;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,12 +42,17 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
     private static volatile int generation;
     private static volatile Set<Ability> pendingNewlyDisabled = Set.of();
     private static volatile Set<Ability> pendingNewlyEnabled = Set.of();
-    @org.jetbrains.annotations.Nullable
+    @Nullable
     private static Set<Ability> lastServerDisabled;
 
     private AbilityConfigs() {
         super(new Gson(), DATAPACK_DIRECTORY);
     }
+
+    private static final Set<String> KNOWN_CONFIG_KEYS = Set.of(
+            "enabled", "cooldown_ticks", "kill_requirement", "damage_taken_requirement", "use_ticks",
+            "effect_duration_ticks", "max_level", "category", "pmmo_use_requirement", "pmmo_grants",
+            "puffish_grants", "attribute_grants", "effect_grants");
 
     @Override
     protected void apply(Map<ResourceLocation, JsonElement> rawEntries, ResourceManager resourceManager, ProfilerFiller profiler) {
@@ -56,10 +63,19 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
                 PlayerAbilities.LOGGER.warn("Skipping player_abilities config for unknown ability {}", abilityId);
                 return;
             }
+            if (json.isJsonObject()) {
+                json.getAsJsonObject().keySet().stream()
+                        .filter(key -> !KNOWN_CONFIG_KEYS.contains(key))
+                        .forEach(key -> PlayerAbilities.LOGGER.warn(
+                                "player_abilities config for {} has unknown key '{}' (typo?)", abilityId, key));
+            }
             AbilityConfig.CODEC.parse(JsonOps.INSTANCE, json)
                     .resultOrPartial(error -> PlayerAbilities.LOGGER.warn(
                             "Skipping malformed player_abilities config for {}: {}", abilityId, error))
-                    .ifPresent(config -> parsed.put(ability, config));
+                    .ifPresent(config -> {
+                        warnInapplicableKeys(ability, config);
+                        parsed.put(ability, config);
+                    });
         });
         Set<Ability> nowDisabled = disabledAbilities(parsed);
         Set<Ability> previouslyDisabled = lastServerDisabled;
@@ -75,6 +91,30 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
         lastServerDisabled = nowDisabled;
         configs = Map.copyOf(parsed);
         generation++;
+    }
+
+    private static void warnInapplicableKeys(Ability ability, AbilityConfig config) {
+        if (!(ability instanceof GatedAbility)) {
+            warnInapplicable(ability, config.cooldownTicks(), "cooldown_ticks");
+            warnInapplicable(ability, config.killRequirement(), "kill_requirement");
+            warnInapplicable(ability, config.damageTakenRequirement(), "damage_taken_requirement");
+            warnInapplicable(ability, config.effectDurationTicks(), "effect_duration_ticks");
+            warnInapplicable(ability, config.effectGrants(), "effect_grants");
+            warnInapplicable(ability, config.pmmoUseRequirement(), "pmmo_use_requirement");
+        }
+        if (!(ability instanceof ActiveAbility)) {
+            warnInapplicable(ability, config.useTicks(), "use_ticks");
+        }
+        if (!(ability instanceof PassiveAbility)) {
+            warnInapplicable(ability, config.attributeGrants(), "attribute_grants");
+        }
+    }
+
+    private static void warnInapplicable(Ability ability, Optional<?> value, String key) {
+        if (value.isPresent()) {
+            PlayerAbilities.LOGGER.warn("player_abilities config for {} declares '{}', which has no effect on this kind of ability",
+                    ability.getId(), key);
+        }
     }
 
     @SubscribeEvent
@@ -109,6 +149,9 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
     public static void onDatapackSync(OnDatapackSyncEvent event) {
         SyncAbilityConfigsPayload payload = buildSyncPayload();
         event.getRelevantPlayers().forEach(player -> PacketDistributor.sendToPlayer(player, payload));
+        if (event.getPlayer() != null) {
+            return;
+        }
         Set<Ability> newlyDisabled = pendingNewlyDisabled;
         Set<Ability> newlyEnabled = pendingNewlyEnabled;
         pendingNewlyDisabled = Set.of();
@@ -135,6 +178,11 @@ public final class AbilityConfigs extends SimpleJsonResourceReloadListener {
             }
         });
         configs = Map.copyOf(resolved);
+        generation++;
+    }
+
+    public static void clearSyncedConfigs() {
+        configs = Map.of();
         generation++;
     }
 

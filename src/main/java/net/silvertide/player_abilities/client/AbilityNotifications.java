@@ -19,8 +19,8 @@ import java.util.List;
 
 @EventBusSubscriber(modid = PlayerAbilities.MOD_ID, value = Dist.CLIENT)
 public final class AbilityNotifications {
-    public static final int ACTIVATED_DISPLAY_TICKS = 100;
-    public static final int READY_DISPLAY_TICKS = 60;
+    private static final int ACTIVATED_DISPLAY_TICKS = 100;
+    private static final int READY_DISPLAY_TICKS = 60;
 
     public static final class Notice {
         private final Ability ability;
@@ -48,8 +48,8 @@ public final class AbilityNotifications {
         }
     }
 
-    private static final List<Notice> activatedNotices = new ArrayList<>();
-    private static final List<Notice> readyNotices = new ArrayList<>();
+    private static final List<Notice> ACTIVATED_NOTICES = new ArrayList<>();
+    private static final List<Notice> READY_NOTICES = new ArrayList<>();
 
     private AbilityNotifications() {
     }
@@ -58,20 +58,20 @@ public final class AbilityNotifications {
         Component title = Component.translatable("hud.player_abilities.triggered_activated", AbilityIcons.name(ability));
         Component subtitle = Component.translatable("hud.player_abilities.cooldown_duration",
                 AbilityIcons.formatCooldown(cooldownTicks));
-        activatedNotices.add(new Notice(ability, title, subtitle, ACTIVATED_DISPLAY_TICKS));
+        ACTIVATED_NOTICES.add(new Notice(ability, title, subtitle, ACTIVATED_DISPLAY_TICKS));
     }
 
     public static void onAbilityReady(GatedAbility ability) {
         Component title = Component.translatable("hud.player_abilities.ability_ready", AbilityIcons.name(ability));
-        readyNotices.add(new Notice(ability, title, Component.empty(), READY_DISPLAY_TICKS));
+        READY_NOTICES.add(new Notice(ability, title, Component.empty(), READY_DISPLAY_TICKS));
     }
 
     public static List<Notice> activatedNotices() {
-        return activatedNotices;
+        return ACTIVATED_NOTICES;
     }
 
     public static List<Notice> readyNotices() {
-        return readyNotices;
+        return READY_NOTICES;
     }
 
     @SubscribeEvent
@@ -81,20 +81,20 @@ public final class AbilityNotifications {
             clearAll();
             return;
         }
-        tickDown(activatedNotices);
-        tickDown(readyNotices);
-        if (!readyNotices.isEmpty()) {
+        tickDown(ACTIVATED_NOTICES);
+        tickDown(READY_NOTICES);
+        if (!READY_NOTICES.isEmpty()) {
             AbilityData abilityData = player.getData(AbilityAttachments.ABILITY_DATA);
-            readyNotices.removeIf(notice -> !abilityData.isGranted(notice.ability()));
+            READY_NOTICES.removeIf(notice -> !abilityData.isGranted(notice.ability()));
         }
     }
 
     private static void clearAll() {
-        if (!activatedNotices.isEmpty()) {
-            activatedNotices.clear();
+        if (!ACTIVATED_NOTICES.isEmpty()) {
+            ACTIVATED_NOTICES.clear();
         }
-        if (!readyNotices.isEmpty()) {
-            readyNotices.clear();
+        if (!READY_NOTICES.isEmpty()) {
+            READY_NOTICES.clear();
         }
     }
 

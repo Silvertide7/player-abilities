@@ -48,7 +48,6 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
     private static final int EFFECT_ICON_SIZE = 10;
     private static final int STATUS_LINE_OFFSET = 10;
     private static final int READY_NOTICE_COLOR = 0xFF66DD66;
-    private static final Component READY = Component.translatable("hud.player_abilities.ready");
 
     private final Map<Ability, EffectLine> effectLineCache = new HashMap<>();
     private int lastCooldownSeconds = -1;
@@ -110,7 +109,7 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
         } else {
             stackCursor = topSide ? MARGIN : guiGraphics.guiHeight() - MARGIN;
         }
-        renderReadyNotices(guiGraphics, minecraft, stackCursor, rightSide, topSide);
+        int effectsCursor = renderReadyNotices(guiGraphics, minecraft, stackCursor, rightSide, topSide);
         if (!widgetVisible) {
             if (showBareIcon) {
                 renderIconCell(guiGraphics, minecraft, ability, cellX, cellY);
@@ -118,16 +117,10 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
             }
             return;
         }
-        int effectsCursor = renderReadyNoticesOffset(minecraft, stackCursor, topSide);
         renderEffects(guiGraphics, minecraft, abilityData, effectsCursor, rightSide, topSide);
         if (ability != null) {
             renderSelectedCell(guiGraphics, minecraft, abilityData, ability, cellX, cellY, rightSide);
         }
-    }
-
-    private int renderReadyNoticesOffset(Minecraft minecraft, int stackCursor, boolean topSide) {
-        int noticeHeight = AbilityNotifications.readyNotices().size() * (minecraft.font.lineHeight + 2);
-        return topSide ? stackCursor + noticeHeight : stackCursor - noticeHeight;
     }
 
     private boolean isContextuallyVisible(LocalPlayer player, AbilityData abilityData, ActiveAbility selected) {
@@ -183,7 +176,7 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
         } else if (!requirementsText.isEmpty()) {
             drawAligned(guiGraphics, minecraft, requirementsText, STATUS_LINE_OFFSET, TEXT_MUTED, rightSide);
         } else {
-            drawAligned(guiGraphics, minecraft, READY, STATUS_LINE_OFFSET, TEXT_MUTED, rightSide);
+            drawAligned(guiGraphics, minecraft, AbilityIcons.READY, STATUS_LINE_OFFSET, TEXT_MUTED, rightSide);
         }
         guiGraphics.pose().popPose();
     }
@@ -209,7 +202,7 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
         float damageRequirement = AbilityConfigs.damageTakenRequirement(ability, level);
         int kills = Math.min(progress.get().getKills(), killRequirement);
         int damage = (int) Math.min(progress.get().getDamageTaken(), damageRequirement);
-        long key = (long) AbilityConfigs.generation() << 52 | (long) level << 40 | (long) kills << 20 | damage;
+        long key = packRequirementCacheKey(AbilityConfigs.generation(), level, kills, damage);
         if (ability != lastRequirementAbility || key != lastRequirementKey) {
             lastRequirementAbility = ability;
             lastRequirementKey = key;
@@ -240,6 +233,9 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
     }
 
     private void renderNotifications(GuiGraphics guiGraphics, Minecraft minecraft) {
+        if (AbilityNotifications.activatedNotices().isEmpty()) {
+            return;
+        }
         int bannerY = guiGraphics.guiHeight() / 3;
         for (AbilityNotifications.Notice notice : AbilityNotifications.activatedNotices()) {
             AbilityIcons.render(guiGraphics, minecraft.font, notice.ability(), MARGIN, bannerY, ICON_SIZE);
@@ -252,6 +248,9 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
 
     private int renderReadyNotices(GuiGraphics guiGraphics, Minecraft minecraft, int stackCursor,
                                    boolean rightSide, boolean topSide) {
+        if (AbilityNotifications.readyNotices().isEmpty()) {
+            return stackCursor;
+        }
         for (AbilityNotifications.Notice notice : AbilityNotifications.readyNotices()) {
             int lineY = topSide ? stackCursor : stackCursor - minecraft.font.lineHeight;
             int lineX = rightSide ? guiGraphics.guiWidth() - MARGIN - minecraft.font.width(notice.title()) : MARGIN;
@@ -259,6 +258,10 @@ public final class AbilityHudOverlay implements LayeredDraw.Layer {
             stackCursor += (topSide ? 1 : -1) * (minecraft.font.lineHeight + 2);
         }
         return stackCursor;
+    }
+
+    private static long packRequirementCacheKey(int configGeneration, int level, int cappedKills, int cappedDamage) {
+        return (long) configGeneration << 52 | (long) level << 40 | (long) cappedKills << 20 | cappedDamage;
     }
 
     private void renderUseBar(GuiGraphics guiGraphics, Minecraft minecraft, ActiveUse use) {

@@ -2,7 +2,11 @@ package net.silvertide.player_abilities.compat.pmmo;
 
 import harmonised.pmmo.api.APIUtils;
 import harmonised.pmmo.api.events.XpEvent;
+import harmonised.pmmo.config.codecs.PlayerData;
+import harmonised.pmmo.core.Core;
+import harmonised.pmmo.util.Reference;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.TickTask;
@@ -22,6 +26,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 public final class PmmoCompat {
     static final String SOURCE_PATH_PREFIX = "pmmo/";
@@ -40,7 +45,7 @@ public final class PmmoCompat {
 
     private static void onAbilityPerform(AbilityPerformEvent event) {
         Optional<AbilityConfig.PmmoUseRequirement> useRequirement = AbilityConfigs.pmmoUseRequirement(event.getAbility());
-        if (useRequirement.isEmpty()) {
+        if (useRequirement.isEmpty() || playerIgnoresRequirements(event.getEntity())) {
             return;
         }
         AbilityConfig.PmmoUseRequirement requirement = useRequirement.get();
@@ -50,6 +55,12 @@ public final class PmmoCompat {
             event.getEntity().displayClientMessage(Component.translatable(
                     "message.player_abilities.pmmo_requirement", requirement.skill(), requiredLevel), true);
         }
+    }
+
+    private static boolean playerIgnoresRequirements(Player player) {
+        PlayerData playerData = Core.get(player.level()).getLoader().PLAYER_LOADER
+                .getData(Reference.mc(player.getUUID().toString()));
+        return playerData != null && playerData.ignoreReq();
     }
 
     private static void onXpEvent(XpEvent event) {
@@ -70,9 +81,11 @@ public final class PmmoCompat {
         if (server == null) {
             return;
         }
+        UUID playerId = player.getUUID();
         server.tell(new TickTask(server.getTickCount() + 1, () -> {
-            if (!player.hasDisconnected()) {
-                reconcile(player);
+            ServerPlayer livePlayer = server.getPlayerList().getPlayer(playerId);
+            if (livePlayer != null && !livePlayer.isRemoved()) {
+                reconcile(livePlayer);
             }
         }));
     }

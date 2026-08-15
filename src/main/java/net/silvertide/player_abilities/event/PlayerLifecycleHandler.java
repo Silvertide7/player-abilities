@@ -11,6 +11,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.silvertide.player_abilities.PlayerAbilities;
 import net.silvertide.player_abilities.api.AbilityAPI;
+import net.silvertide.player_abilities.api.AbilityTickJobs;
 import net.silvertide.player_abilities.api.PassiveAbility;
 import net.silvertide.player_abilities.api.PlayerTriggers;
 import net.silvertide.player_abilities.config.AbilityConfigs;
@@ -29,28 +30,25 @@ public final class PlayerLifecycleHandler {
     @SubscribeEvent
     public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
-            reapplyPassives(serverPlayer, serverPlayer);
-            AbilityAPI.getActiveEffects(serverPlayer).forEach((ability, effect) -> {
-                if (AbilityConfigs.isEnabled(ability)) {
-                    ability.onEffectStart(serverPlayer, effect.getLevel());
-                }
-            });
+            reapplyPassives(serverPlayer);
+            AbilityAPI.restartActiveEffects(serverPlayer);
             AbilitySync.syncAllState(serverPlayer);
         }
     }
 
     @SubscribeEvent
-    public static void onDeathClone(PlayerEvent.Clone event) {
-        if (event.isWasDeath()
-                && event.getEntity() instanceof ServerPlayer newPlayer
-                && event.getOriginal() instanceof ServerPlayer originalPlayer) {
-            reapplyPassives(originalPlayer, newPlayer);
+    public static void onClone(PlayerEvent.Clone event) {
+        if (!event.isWasDeath() && event.getOriginal() instanceof ServerPlayer originalPlayer) {
+            AbilityAPI.cancelUse(originalPlayer);
         }
+        AbilityTickJobs.cancelPlayerJobs(event.getEntity().getUUID());
     }
 
     @SubscribeEvent
     public static void onRespawn(PlayerEvent.PlayerRespawnEvent event) {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
+            reapplyPassives(serverPlayer);
+            AbilityAPI.restartActiveEffects(serverPlayer);
             AbilitySync.syncAllState(serverPlayer);
             AbilityAPI.fireTrigger(PlayerTriggers.RESPAWN, serverPlayer);
         }
@@ -140,8 +138,8 @@ public final class PlayerLifecycleHandler {
         }
     }
 
-    private static void reapplyPassives(ServerPlayer grantSourcePlayer, ServerPlayer targetPlayer) {
-        AbilityData abilityData = grantSourcePlayer.getData(AbilityAttachments.ABILITY_DATA);
+    private static void reapplyPassives(ServerPlayer player) {
+        AbilityData abilityData = player.getData(AbilityAttachments.ABILITY_DATA);
         Set<PassiveAbility> grantedPassives = abilityData.getGrantsBySource().values().stream()
                 .flatMap(abilityLevels -> abilityLevels.keySet().stream())
                 .filter(PassiveAbility.class::isInstance)
@@ -149,10 +147,10 @@ public final class PlayerLifecycleHandler {
                 .collect(Collectors.toSet());
         for (PassiveAbility passive : grantedPassives) {
             int rawLevel = abilityData.getEffectiveLevelIgnoringDisabled(passive);
-            if (AbilityConfigs.isEnabled(passive) && AbilityAPI.isPassiveEnabled(grantSourcePlayer, passive)) {
-                AbilityAPI.activatePassive(targetPlayer, passive, rawLevel);
+            if (AbilityConfigs.isEnabled(passive) && AbilityAPI.isPassiveEnabled(player, passive)) {
+                AbilityAPI.activatePassive(player, passive, rawLevel);
             } else {
-                AbilityAPI.removeAttributeGrants(targetPlayer, passive, rawLevel);
+                AbilityAPI.removeAttributeGrants(player, passive);
             }
         }
     }

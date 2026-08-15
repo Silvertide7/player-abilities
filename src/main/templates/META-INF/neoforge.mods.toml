@@ -88,14 +88,14 @@ Adds personal player abilities.
 [[dependencies.${mod_id}]]
     modId="pmmo"
     type="optional"
-    versionRange="[0,)"
+    versionRange="${pmmo_version_range}"
     ordering="AFTER"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
     modId="puffish_skills"
     type="optional"
-    versionRange="[0,)"
+    versionRange="${puffish_skills_version_range}"
     ordering="AFTER"
     side="BOTH"
 

@@ -72,7 +72,6 @@ neoForge {
 
         server {
             server()
-//            programArgument '--nogui'
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
@@ -146,6 +145,8 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             minecraft_version_range: minecraft_version_range,
             neo_version            : neo_version,
             loader_version_range   : loader_version_range,
+            pmmo_version_range     : pmmo_version_range,
+            puffish_skills_version_range: puffish_skills_version_range,
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,

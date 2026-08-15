@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 public final class PuffishSkillsCompat {
     static final String SOURCE_PATH_PREFIX = "puffish_skills/";
@@ -57,9 +58,11 @@ public final class PuffishSkillsCompat {
         if (server == null) {
             return;
         }
+        UUID playerId = player.getUUID();
         server.tell(new TickTask(server.getTickCount() + 1, () -> {
-            if (!player.hasDisconnected()) {
-                reconcile(player);
+            ServerPlayer livePlayer = server.getPlayerList().getPlayer(playerId);
+            if (livePlayer != null && !livePlayer.isRemoved()) {
+                reconcile(livePlayer);
             }
         }));
     }

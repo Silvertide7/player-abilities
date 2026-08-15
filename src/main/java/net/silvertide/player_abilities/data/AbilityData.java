@@ -49,6 +49,9 @@ public class AbilityData {
                     .forGetter(abilityData -> abilityData.getSelected().map(Ability::getId))
     ).apply(instance, AbilityData::fromSerialized));
 
+    public record TriggeredGrant(TriggeredAbility<?> ability, int level) {
+    }
+
     private final Map<ResourceLocation, Map<Ability, Integer>> grants = new HashMap<>();
     private final Map<GatedAbility, Cooldown> cooldowns = new HashMap<>();
     private final Map<Ability, ActiveEffect> activeEffects = new HashMap<>();
@@ -61,9 +64,6 @@ public class AbilityData {
     private int cachedTriggeredGeneration = -1;
     @Nullable
     private ActiveAbility selected;
-
-    public record TriggeredGrant(TriggeredAbility<?> ability, int level) {
-    }
     @Nullable
     private ActiveUse activeUse;
     @Nullable
@@ -143,8 +143,10 @@ public class AbilityData {
     }
 
     public int setGrant(ResourceLocation source, Ability ability, int level) {
-        cachedTriggeredGrants = null;
         Integer previousLevel = grants.computeIfAbsent(source, key -> new HashMap<>()).put(ability, level);
+        if (previousLevel == null || previousLevel != level) {
+            cachedTriggeredGrants = null;
+        }
         return previousLevel == null ? 0 : previousLevel;
     }
 
