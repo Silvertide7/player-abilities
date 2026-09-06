@@ -7,10 +7,12 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.level.Level;
 import net.minecraft.ChatFormatting;
 import net.minecraft.resources.ResourceLocation;
@@ -26,6 +28,7 @@ import java.util.List;
 
 public class AbilityBookItem extends Item {
     public static final ResourceLocation BOOK_SOURCE = PlayerAbilities.id("book");
+    private static final int LEARN_DURATION_TICKS = 60;
 
     public AbilityBookItem(Properties properties) {
         super(properties);
@@ -50,39 +53,79 @@ public class AbilityBookItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        AbilityBookContent content = stack.get(AbilityItems.ABILITY_BOOK_CONTENT.get());
-        if (content == null) {
+        if (findLearnableAbility(stack, player) == null) {
             return InteractionResultHolder.fail(stack);
         }
-        if (level.isClientSide || !(player instanceof ServerPlayer serverPlayer)) {
-            return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
+        player.startUsingItem(hand);
+        return InteractionResultHolder.consume(stack);
+    }
+
+    @Override
+    public UseAnim getUseAnimation(ItemStack stack) {
+        return UseAnim.BOW;
+    }
+
+    @Override
+    public int getUseDuration(ItemStack stack, LivingEntity entity) {
+        return LEARN_DURATION_TICKS;
+    }
+
+    @Override
+    public ItemStack finishUsingItem(ItemStack stack, Level level, LivingEntity entity) {
+        if (!(entity instanceof Player player)) {
+            return stack;
         }
-        Ability ability = AbilityRegistry.ABILITIES.get(content.abilityId());
+        Ability ability = findLearnableAbility(stack, player);
         if (ability == null) {
-            serverPlayer.displayClientMessage(
-                    Component.translatable("message.player_abilities.book_unknown_ability", content.abilityId().toString()), true);
-            return InteractionResultHolder.fail(stack);
+            return stack;
         }
-        Component abilityName = Component.translatable(ability.getDescriptionId());
-        if (!AbilityConfigs.isEnabled(ability)) {
-            serverPlayer.displayClientMessage(
-                    Component.translatable("message.player_abilities.book_ability_disabled", abilityName), true);
-            return InteractionResultHolder.fail(stack);
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return stack;
         }
-        int grantLevel = Math.min(content.level(), AbilityConfigs.maxLevel(ability));
-        if (AbilityAPI.getLevel(serverPlayer, ability) >= grantLevel) {
-            serverPlayer.displayClientMessage(
-                    Component.translatable("message.player_abilities.book_already_known", abilityName), true);
-            return InteractionResultHolder.fail(stack);
-        }
+        int grantLevel = grantLevelFor(stack, ability);
         AbilityAPI.grant(serverPlayer, BOOK_SOURCE, ability, grantLevel);
         serverPlayer.displayClientMessage(
-                Component.translatable("message.player_abilities.book_learned", abilityName), true);
+                Component.translatable("message.player_abilities.book_learned",
+                        Component.translatable(ability.getDescriptionId())), true);
         level.playSound(null, player.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.6f, 1.2f);
         if (!player.getAbilities().instabuild) {
             stack.shrink(1);
         }
-        return InteractionResultHolder.consume(stack);
+        return stack;
+    }
+
+    private static int grantLevelFor(ItemStack stack, Ability ability) {
+        AbilityBookContent content = stack.get(AbilityItems.ABILITY_BOOK_CONTENT.get());
+        return Math.min(content == null ? 1 : content.level(), AbilityConfigs.maxLevel(ability));
+    }
+
+    private static Ability findLearnableAbility(ItemStack stack, Player player) {
+        AbilityBookContent content = stack.get(AbilityItems.ABILITY_BOOK_CONTENT.get());
+        if (content == null) {
+            return null;
+        }
+        Ability ability = AbilityRegistry.ABILITIES.get(content.abilityId());
+        if (ability == null) {
+            displayFailure(player, Component.translatable(
+                    "message.player_abilities.book_unknown_ability", content.abilityId().toString()));
+            return null;
+        }
+        Component abilityName = Component.translatable(ability.getDescriptionId());
+        if (!AbilityConfigs.isEnabled(ability)) {
+            displayFailure(player, Component.translatable("message.player_abilities.book_ability_disabled", abilityName));
+            return null;
+        }
+        if (AbilityAPI.getLevel(player, ability) >= grantLevelFor(stack, ability)) {
+            displayFailure(player, Component.translatable("message.player_abilities.book_already_known", abilityName));
+            return null;
+        }
+        return ability;
+    }
+
+    private static void displayFailure(Player player, Component message) {
+        if (player instanceof ServerPlayer serverPlayer) {
+            serverPlayer.displayClientMessage(message, true);
+        }
     }
 
     @Override
